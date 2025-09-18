@@ -56,7 +56,7 @@ CREATE TABLE usuarios (
     usuario_id SERIAL PRIMARY KEY,
     email VARCHAR(100) UNIQUE NOT NULL,
     senha VARCHAR(255) NOT NULL,
-    tipo tipo_usuario DEFAULT 'comum',
+    tipo VARCHAR(20) DEFAULT 'comum',
     data_criacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 

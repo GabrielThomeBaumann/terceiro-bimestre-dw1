@@ -35,8 +35,8 @@
                     <legend>Dados do Empréstimo</legend>
 
                     <div class="form-group">
-                        <label for="cliente_id">ID do Cliente:</label>
-                        <input type="number" id="cliente_id" name="cliente_id" required />
+                        <label for="usuario_id">ID do Usuário:</label>
+                        <input type="number" id="usuario_id" name="usuario_id" required />
                     </div>
 
                     <div class="form-group">
@@ -45,13 +45,22 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="data_devolucao">Data de Devolução:</label>
-                        <input type="date" id="data_devolucao" name="data_devolucao" />
+                        <label for="data_devolucao_prevista">Data de Devolução Prevista:</label>
+                        <input type="date" id="data_devolucao_prevista" name="data_devolucao_prevista" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_devolucao_real">Data de Devolução Realizada:</label>
+                        <input type="date" id="data_devolucao_real" name="data_devolucao_real" />
                     </div>
 
                     <div class="form-group">
                         <label for="status">Status:</label>
-                        <input type="text" id="status" name="status" />
+                        <select id="status" name="status">
+                            <option value="ativo">Ativo</option>
+                            <option value="devolvido">Devolvido</option>
+                            <option value="atrasado">Atrasado</option>
+                        </select>
                     </div>
                 </fieldset>
             </form>
@@ -63,9 +72,10 @@
                     <thead>
                         <tr>
                             <th>ID</th>
-                            <th>ID do Cliente</th>
+                            <th>ID do Usuário</th>
                             <th>Data do Empréstimo</th>
-                            <th>Data de Devolução</th>
+                            <th>Data Devolução Prevista</th>
+                            <th>Data Devolução Realizada</th>
                             <th>Status</th>
                         </tr>
                     </thead>

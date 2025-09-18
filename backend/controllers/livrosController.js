@@ -21,31 +21,17 @@ exports.listarLivros = async (req, res) => {
 
 exports.criarLivro = async (req, res) => {
   try {
-    // Assumindo que livro_id é SERIAL e o banco de dados o gerencia.
-    // Adicione os campos da sua tabela 'livros' aqui. Exemplo:
-    const { titulo, autor, ano_publicacao, editora_id } = req.body;
+    const { titulo, ano_publicacao, editora_id, isbn, paginas, imagem_url } = req.body;
 
-    // Validação básica
-    if (!titulo || !autor || !ano_publicacao || !editora_id) {
+    if (!titulo || !ano_publicacao || !editora_id || !isbn) {
       return res.status(400).json({
-        error: 'Título, autor, ano de publicação e ID da editora são obrigatórios'
+        error: 'Título, ano de publicação, ID da editora e ISBN são obrigatórios'
       });
     }
 
-    /*
-    Exemplo de estrutura da tabela livros:
-    CREATE TABLE livros (
-        livro_id SERIAL PRIMARY KEY,
-        titulo VARCHAR(255) NOT NULL,
-        autor VARCHAR(255) NOT NULL,
-        ano_publicacao INT,
-        editora_id INT REFERENCES editoras(editora_id)
-    );
-    */
-
     const result = await query(
-      'INSERT INTO livros (titulo, autor, ano_publicacao, editora_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [titulo, autor, ano_publicacao, editora_id]
+      'INSERT INTO livros (titulo, ano_publicacao, editora_id, isbn, paginas, imagem_url) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+      [titulo, ano_publicacao, editora_id, isbn, paginas || null, imagem_url || null]
     );
 
     res.status(201).json(result.rows[0]);
@@ -57,10 +43,14 @@ exports.criarLivro = async (req, res) => {
         error: 'Dados obrigatórios não fornecidos'
       });
     }
-    // Adicione outras verificações de erro específicas, como violação de chave estrangeira
-    if (error.code === '23503') { // foreign_key_violation
+    if (error.code === '23503') {
       return res.status(400).json({
         error: 'Editora_id fornecido não existe'
+      });
+    }
+    if (error.code === '23505' && error.constraint === 'livros_isbn_key') {
+      return res.status(400).json({
+        error: 'ISBN já cadastrado'
       });
     }
 
@@ -95,10 +85,8 @@ exports.obterLivro = async (req, res) => {
 exports.atualizarLivro = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Adicione os campos da sua tabela 'livros' aqui. Exemplo:
-    const { titulo, autor, ano_publicacao, editora_id } = req.body;
+    const { titulo, ano_publicacao, editora_id, isbn, paginas, imagem_url } = req.body;
 
-    // Verifica se o livro existe
     const existingLivroResult = await query(
       'SELECT * FROM livros WHERE livro_id = $1',
       [id]
@@ -108,30 +96,36 @@ exports.atualizarLivro = async (req, res) => {
       return res.status(404).json({ error: 'Livro não encontrado' });
     }
 
-    // Constrói a query de atualização dinamicamente para campos não nulos
     const currentLivro = existingLivroResult.rows[0];
     const updatedFields = {
       titulo: titulo !== undefined ? titulo : currentLivro.titulo,
-      autor: autor !== undefined ? autor : currentLivro.autor,
       ano_publicacao: ano_publicacao !== undefined ? ano_publicacao : currentLivro.ano_publicacao,
-      editora_id: editora_id !== undefined ? editora_id : currentLivro.editora_id
+      editora_id: editora_id !== undefined ? editora_id : currentLivro.editora_id,
+      isbn: isbn !== undefined ? isbn : currentLivro.isbn,
+      paginas: paginas !== undefined ? paginas : currentLivro.paginas,
+      imagem_url: imagem_url !== undefined ? imagem_url : currentLivro.imagem_url
     };
 
-    // Atualiza o livro
     const updateResult = await query(
-      'UPDATE livros SET titulo = $1, autor = $2, ano_publicacao = $3, editora_id = $4 WHERE livro_id = $5 RETURNING *',
-      [updatedFields.titulo, updatedFields.autor, updatedFields.ano_publicacao, updatedFields.editora_id, id]
+      'UPDATE livros SET titulo = $1, ano_publicacao = $2, editora_id = $3, isbn = $4, paginas = $5, imagem_url = $6 WHERE livro_id = $7 RETURNING *',
+      [updatedFields.titulo, updatedFields.ano_publicacao, updatedFields.editora_id, updatedFields.isbn, updatedFields.paginas, updatedFields.imagem_url, id]
     );
 
     res.json(updateResult.rows[0]);
   } catch (error) {
     console.error('Erro ao atualizar livro:', error);
-    // Adicione outras verificações de erro específicas, como violação de chave estrangeira
-    if (error.code === '23503') { // foreign_key_violation
+
+    if (error.code === '23503') {
       return res.status(400).json({
         error: 'Editora_id fornecido não existe'
       });
     }
+    if (error.code === '23505' && error.constraint === 'livros_isbn_key') {
+      return res.status(400).json({
+        error: 'ISBN já cadastrado'
+      });
+    }
+
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
@@ -139,7 +133,7 @@ exports.atualizarLivro = async (req, res) => {
 exports.deletarLivro = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    // Verifica se o livro existe
+
     const existingLivroResult = await query(
       'SELECT * FROM livros WHERE livro_id = $1',
       [id]
@@ -149,7 +143,6 @@ exports.deletarLivro = async (req, res) => {
       return res.status(404).json({ error: 'Livro não encontrado' });
     }
 
-    // Deleta o livro (as constraints CASCADE cuidarão das dependências, se configuradas)
     await query(
       'DELETE FROM livros WHERE livro_id = $1',
       [id]
@@ -159,7 +152,6 @@ exports.deletarLivro = async (req, res) => {
   } catch (error) {
     console.error('Erro ao deletar livro:', error);
 
-    // Verifica se é erro de violação de foreign key (dependências)
     if (error.code === '23503') {
       return res.status(400).json({
         error: 'Não é possível deletar livro com dependências associadas'

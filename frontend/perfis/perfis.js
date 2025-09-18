@@ -1,37 +1,39 @@
-// Configuração da API, IP e porta.
 const API_BASE_URL = 'http://localhost:3001';
-let currentPerfilId = null;
-let operacao = null;
 
-// Elementos do DOM
-const form = document.getElementById('perfisForm');
 const searchId = document.getElementById('searchId');
 const btnBuscar = document.getElementById('btnBuscar');
 const btnIncluir = document.getElementById('btnIncluir');
 const btnAlterar = document.getElementById('btnAlterar');
 const btnExcluir = document.getElementById('btnExcluir');
-const btnCancelar = document.getElementById('btnCancelar');
 const btnSalvar = document.getElementById('btnSalvar');
+const btnCancelar = document.getElementById('btnCancelar');
+
+const usuarioIdInput = document.getElementById('usuario_id');
+const nomeCompletoInput = document.getElementById('nome_completo');
+const telefoneInput = document.getElementById('telefone');
+const enderecoInput = document.getElementById('endereco');
+const dataNascimentoInput = document.getElementById('data_nascimento');
+
 const perfisTableBody = document.getElementById('perfisTableBody');
 const messageContainer = document.getElementById('messageContainer');
 
-// Carregar lista de perfis ao inicializar
+let currentUsuarioId = null;
+let operacao = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     carregarPerfis();
+    limparFormulario();
+    mostrarBotoes(true, false, false, false, false, false);
+    bloquearCampos(false);
 });
 
-// Event Listeners
 btnBuscar.addEventListener('click', buscarPerfil);
 btnIncluir.addEventListener('click', incluirPerfil);
 btnAlterar.addEventListener('click', alterarPerfil);
 btnExcluir.addEventListener('click', excluirPerfil);
-btnCancelar.addEventListener('click', cancelarOperacao);
 btnSalvar.addEventListener('click', salvarOperacao);
+btnCancelar.addEventListener('click', cancelarOperacao);
 
-mostrarBotoes(true, false, false, false, false, false);
-bloquearCampos(false);
-
-// Função para mostrar mensagens
 function mostrarMensagem(texto, tipo = 'info') {
     messageContainer.innerHTML = `<div class="message ${tipo}">${texto}</div>`;
     setTimeout(() => {
@@ -39,115 +41,149 @@ function mostrarMensagem(texto, tipo = 'info') {
     }, 3000);
 }
 
-// Função para bloquear/desbloquear campos do formulário
-function bloquearCampos(bloquearPrimeiro) {
-    const inputs = form.querySelectorAll('input');
-    inputs.forEach((input, index) => {
-        if (index === 0) {
-            input.disabled = bloquearPrimeiro; // ID bloqueado se true
-        } else {
-            input.disabled = !bloquearPrimeiro; // Outros campos liberados se bloquearPrimeiro true
-        }
-    });
+function bloquearCampos(bloquear) {
+    usuarioIdInput.disabled = bloquear;
+    nomeCompletoInput.disabled = bloquear;
+    telefoneInput.disabled = bloquear;
+    enderecoInput.disabled = bloquear;
+    dataNascimentoInput.disabled = bloquear;
 }
 
-// Função para limpar formulário
 function limparFormulario() {
-    form.reset();
-    searchId.disabled = false;
+    currentUsuarioId = null;
+    searchId.value = '';
+    usuarioIdInput.value = '';
+    nomeCompletoInput.value = '';
+    telefoneInput.value = '';
+    enderecoInput.value = '';
+    dataNascimentoInput.value = '';
+    bloquearCampos(false);
+    usuarioIdInput.disabled = false;
 }
 
-// Função para mostrar/ocultar botões
-function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCancelar) {
-    btnBuscar.style.display = btBuscar ? 'inline-block' : 'none';
-    btnIncluir.style.display = btIncluir ? 'inline-block' : 'none';
-    btnAlterar.style.display = btAlterar ? 'inline-block' : 'none';
-    btnExcluir.style.display = btExcluir ? 'inline-block' : 'none';
-    btnSalvar.style.display = btSalvar ? 'inline-block' : 'none';
-    btnCancelar.style.display = btCancelar ? 'inline-block' : 'none';
+function mostrarBotoes(buscar, incluir, alterar, excluir, salvar, cancelar) {
+    btnBuscar.style.display = buscar ? 'inline-block' : 'none';
+    btnIncluir.style.display = incluir ? 'inline-block' : 'none';
+    btnAlterar.style.display = alterar ? 'inline-block' : 'none';
+    btnExcluir.style.display = excluir ? 'inline-block' : 'none';
+    btnSalvar.style.display = salvar ? 'inline-block' : 'none';
+    btnCancelar.style.display = cancelar ? 'inline-block' : 'none';
 }
 
-// Função para buscar perfil por ID
+async function carregarPerfis() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/perfis`);
+        if (!response.ok) throw new Error('Erro ao carregar perfis');
+        const perfis = await response.json();
+
+        perfisTableBody.innerHTML = '';
+
+        perfis.forEach(perfil => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <button class="btn-id" onclick="selecionarPerfil(${perfil.usuario_id})">
+                        ${perfil.usuario_id}
+                    </button>
+                </td>
+                <td>${perfil.nome_completo || ''}</td>
+                <td>${perfil.telefone || ''}</td>
+                <td>${perfil.endereco || ''}</td>
+                <td>${perfil.data_nascimento ? perfil.data_nascimento.split('T')[0] : ''}</td>
+            `;
+            perfisTableBody.appendChild(tr);
+        });
+    } catch (error) {
+        console.error(error);
+        mostrarMensagem('Erro ao carregar perfis', 'error');
+    }
+}
+
+async function selecionarPerfil(id) {
+    searchId.value = id;
+    await buscarPerfil();
+}
+
 async function buscarPerfil() {
     const id = searchId.value.trim();
     if (!id) {
-        mostrarMensagem('Digite um ID para buscar', 'warning');
+        mostrarMensagem('Digite um ID de Usuário para buscar', 'warning');
         return;
     }
-    bloquearCampos(false);
-    searchId.focus();
     try {
         const response = await fetch(`${API_BASE_URL}/perfis/${id}`);
-
         if (response.ok) {
             const perfil = await response.json();
             preencherFormulario(perfil);
-
-            mostrarBotoes(true, false, true, true, false, false);
             mostrarMensagem('Perfil encontrado!', 'success');
-
+            mostrarBotoes(true, false, true, true, false, true);
+            bloquearCampos(true);
+            usuarioIdInput.disabled = true;
+            currentUsuarioId = perfil.usuario_id;
         } else if (response.status === 404) {
+            mostrarMensagem('Perfil não encontrado. Você pode incluir um novo perfil para este usuário.', 'info');
             limparFormulario();
             searchId.value = id;
-            mostrarBotoes(true, true, false, false, false, false);
-            mostrarMensagem('Perfil não encontrado. Você pode incluir um novo perfil.', 'info');
+            usuarioIdInput.value = id;
+            mostrarBotoes(true, true, false, false, false, true);
             bloquearCampos(false);
+            usuarioIdInput.disabled = true;
         } else {
             throw new Error('Erro ao buscar perfil');
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error(error);
         mostrarMensagem('Erro ao buscar perfil', 'error');
     }
 }
 
-// Função para preencher formulário com dados do perfil
 function preencherFormulario(perfil) {
-    currentPerfilId = perfil.perfil_id;
-    searchId.value = perfil.perfil_id;
-    document.getElementById('nome_perfil').value = perfil.nome_perfil || '';
-    document.getElementById('descricao').value = perfil.descricao || '';
+    currentUsuarioId = perfil.usuario_id;
+    searchId.value = perfil.usuario_id;
+    usuarioIdInput.value = perfil.usuario_id;
+    nomeCompletoInput.value = perfil.nome_completo || '';
+    telefoneInput.value = perfil.telefone || '';
+    enderecoInput.value = perfil.endereco || '';
+    dataNascimentoInput.value = perfil.data_nascimento ? perfil.data_nascimento.split('T')[0] : '';
 }
 
-// Função para iniciar inclusão de perfil
 function incluirPerfil() {
-    mostrarMensagem('Digite os dados!', 'info');
     limparFormulario();
-    bloquearCampos(true);
+    if (searchId.value.trim()) {
+        usuarioIdInput.value = searchId.value.trim();
+        usuarioIdInput.disabled = true;
+    } else {
+        usuarioIdInput.disabled = false;
+    }
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('nome_perfil').focus();
+    bloquearCampos(false);
+    nomeCompletoInput.focus();
     operacao = 'incluir';
 }
 
-// Função para iniciar alteração de perfil
 function alterarPerfil() {
-    mostrarMensagem('Digite os dados para alterar!', 'info');
-    bloquearCampos(true);
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('nome_perfil').focus();
+    bloquearCampos(false);
+    usuarioIdInput.disabled = true;
+    nomeCompletoInput.focus();
     operacao = 'alterar';
 }
 
-// Função para iniciar exclusão de perfil
 function excluirPerfil() {
-    mostrarMensagem('Confirme a exclusão!', 'warning');
-    bloquearCampos(false);
-    searchId.disabled = true;
     mostrarBotoes(false, false, false, false, true, true);
+    bloquearCampos(true);
+    usuarioIdInput.disabled = true;
     operacao = 'excluir';
 }
 
-// Função para cancelar operação
 function cancelarOperacao() {
     limparFormulario();
     mostrarBotoes(true, false, false, false, false, false);
     bloquearCampos(false);
-    searchId.disabled = false;
+    usuarioIdInput.disabled = false;
     operacao = null;
-    mostrarMensagem('Operação cancelada', 'info');
 }
 
-// Função para salvar inclusão, alteração ou exclusão
 async function salvarOperacao() {
     if (!operacao) {
         mostrarMensagem('Nenhuma operação selecionada', 'warning');
@@ -155,12 +191,15 @@ async function salvarOperacao() {
     }
 
     const perfil = {
-        nome_perfil: document.getElementById('nome_perfil').value.trim(),
-        descricao: document.getElementById('descricao').value.trim() || null
+        usuario_id: parseInt(usuarioIdInput.value),
+        nome_completo: nomeCompletoInput.value.trim(),
+        telefone: telefoneInput.value.trim() || null,
+        endereco: enderecoInput.value.trim() || null,
+        data_nascimento: dataNascimentoInput.value || null
     };
 
-    if ((operacao === 'incluir' || operacao === 'alterar') && !perfil.nome_perfil) {
-        mostrarMensagem('Nome do perfil é obrigatório', 'warning');
+    if ((operacao === 'incluir' || operacao === 'alterar') && (!perfil.usuario_id || !perfil.nome_completo)) {
+        mostrarMensagem('ID do Usuário e Nome Completo são obrigatórios', 'warning');
         return;
     }
 
@@ -174,74 +213,31 @@ async function salvarOperacao() {
                 body: JSON.stringify(perfil)
             });
         } else if (operacao === 'alterar') {
-            response = await fetch(`${API_BASE_URL}/perfis/${currentPerfilId}`, {
+            response = await fetch(`${API_BASE_URL}/perfis/${currentUsuarioId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(perfil)
             });
         } else if (operacao === 'excluir') {
-            response = await fetch(`${API_BASE_URL}/perfis/${currentPerfilId}`, {
+            response = await fetch(`${API_BASE_URL}/perfis/${currentUsuarioId}`, {
                 method: 'DELETE'
             });
         }
 
         if (response.ok) {
-            if (operacao === 'excluir') {
-                mostrarMensagem('Perfil excluído com sucesso!', 'success');
-            } else {
-                mostrarMensagem(`Perfil ${operacao} com sucesso!`, 'success');
-            }
+            mostrarMensagem(`Perfil ${operacao} com sucesso!`, 'success');
             limparFormulario();
             carregarPerfis();
             mostrarBotoes(true, false, false, false, false, false);
             bloquearCampos(false);
-            searchId.disabled = false;
+            usuarioIdInput.disabled = false;
             operacao = null;
         } else {
             const errorData = await response.json();
             mostrarMensagem(errorData.error || 'Erro na operação', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error(error);
         mostrarMensagem('Erro na operação', 'error');
     }
-}
-
-// Função para carregar lista de perfis
-async function carregarPerfis() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/perfis`);
-        if (response.ok) {
-            const perfis = await response.json();
-            renderizarTabelaPerfis(perfis);
-        } else {
-            throw new Error('Erro ao carregar perfis');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao carregar lista de perfis', 'error');
-    }
-}
-
-// Função para renderizar tabela de perfis
-function renderizarTabelaPerfis(perfis) {
-    perfisTableBody.innerHTML = '';
-
-    perfis.forEach(perfil => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <button class="btn-id" onclick="selecionarPerfil(${perfil.perfil_id})">${perfil.perfil_id}</button>
-            </td>
-            <td>${perfil.nome_perfil}</td>
-            <td>${perfil.descricao || ''}</td>
-        `;
-        perfisTableBody.appendChild(row);
-    });
-}
-
-// Função para selecionar perfil da tabela
-async function selecionarPerfil(id) {
-    searchId.value = id;
-    await buscarPerfil();
 }

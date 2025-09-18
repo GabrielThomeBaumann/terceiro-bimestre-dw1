@@ -39,21 +39,26 @@ function mostrarMensagem(texto, tipo = 'info') {
     }, 3000);
 }
 
+// Função para bloquear/desbloquear campos do formulário
 function bloquearCampos(bloquearPrimeiro) {
-    const inputs = form.querySelectorAll('input, select');
+    const inputs = form.querySelectorAll('input');
     inputs.forEach((input, index) => {
         if (index === 0) {
-            input.disabled = bloquearPrimeiro;
+            input.disabled = bloquearPrimeiro; // ID bloqueado se true
         } else {
-            input.disabled = !bloquearPrimeiro;
+            input.disabled = !bloquearPrimeiro; // Outros campos liberados se bloquearPrimeiro true
         }
     });
 }
 
+// Função para limpar formulário
 function limparFormulario() {
     form.reset();
+    searchId.disabled = false;
+    currentLivroId = null;
 }
 
+// Função para mostrar/ocultar botões
 function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCancelar) {
     btnBuscar.style.display = btBuscar ? 'inline-block' : 'none';
     btnIncluir.style.display = btIncluir ? 'inline-block' : 'none';
@@ -101,101 +106,40 @@ async function buscarLivro() {
 function preencherFormulario(livro) {
     currentLivroId = livro.livro_id;
     searchId.value = livro.livro_id;
-    document.getElementById('titulo_livro').value = livro.titulo || '';
-    document.getElementById('autor_livro').value = livro.autor || '';
-    document.getElementById('ano_publicacao_livro').value = livro.ano_publicacao || '';
-    document.getElementById('editora_id_livro').value = livro.editora_id || '';
+    document.getElementById('titulo').value = livro.titulo || '';
+    document.getElementById('isbn').value = livro.isbn || '';
+    document.getElementById('ano_publicacao').value = livro.ano_publicacao || '';
+    document.getElementById('paginas').value = livro.paginas || '';
+    document.getElementById('editora_id').value = livro.editora_id || '';
+    document.getElementById('imagem_url').value = livro.imagem_url || '';
 }
 
-// Função para incluir livro
-async function incluirLivro() {
-    mostrarMensagem('Digite os dados!', 'success');
-    currentLivroId = searchId.value;
+// Função para iniciar inclusão de livro
+function incluirLivro() {
+    mostrarMensagem('Digite os dados!', 'info');
     limparFormulario();
-    searchId.value = currentLivroId;
     bloquearCampos(true);
-
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('titulo_livro').focus();
+    document.getElementById('titulo').focus();
     operacao = 'incluir';
 }
 
-// Função para alterar livro
-async function alterarLivro() {
-    mostrarMensagem('Digite os dados!', 'success');
+// Função para iniciar alteração de livro
+function alterarLivro() {
+    mostrarMensagem('Digite os dados para alterar!', 'info');
     bloquearCampos(true);
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('titulo_livro').focus();
+    document.getElementById('titulo').focus();
     operacao = 'alterar';
 }
 
-// Função para excluir livro
-async function excluirLivro() {
-    mostrarMensagem('Excluindo livro...', 'info');
-    currentLivroId = searchId.value;
-    searchId.disabled = true;
+// Função para iniciar exclusão de livro
+function excluirLivro() {
+    mostrarMensagem('Confirme a exclusão!', 'warning');
     bloquearCampos(false);
+    searchId.disabled = true;
     mostrarBotoes(false, false, false, false, true, true);
     operacao = 'excluir';
-}
-
-async function salvarOperacao() {
-    console.log('Operação:', operacao + ' - currentLivroId: ' + currentLivroId + ' - searchId: ' + searchId.value);
-
-    const formData = new FormData(form);
-    const livro = {
-        livro_id: searchId.value,
-        titulo: formData.get('titulo_livro'),
-        autor: formData.get('autor_livro'),
-        ano_publicacao: formData.get('ano_publicacao_livro'),
-        editora_id: formData.get('editora_id_livro')
-    };
-    let response = null;
-    try {
-        if (operacao === 'incluir') {
-            response = await fetch(`${API_BASE_URL}/livros`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(livro)
-            });
-        } else if (operacao === 'alterar') {
-            response = await fetch(`${API_BASE_URL}/livros/${currentLivroId}`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(livro)
-            });
-        } else if (operacao === 'excluir') {
-            response = await fetch(`${API_BASE_URL}/livros/${currentLivroId}`, {
-                method: 'DELETE'
-            });
-            console.log('Livro excluído' + response.status);
-        }
-        if (response.ok && (operacao === 'incluir' || operacao === 'alterar')) {
-            const novoLivro = await response.json();
-            mostrarMensagem('Operação ' + operacao + ' realizada com sucesso!', 'success');
-            limparFormulario();
-            carregarLivros();
-
-        } else if (operacao !== 'excluir') {
-            const error = await response.json();
-            mostrarMensagem(error.error || 'Erro ao incluir livro', 'error');
-        } else {
-            mostrarMensagem('Livro excluído com sucesso!', 'success');
-            limparFormulario();
-            carregarLivros();
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao incluir ou alterar o livro', 'error');
-    }
-
-    mostrarBotoes(true, false, false, false, false, false);
-    bloquearCampos(false);
-    document.getElementById('searchId').focus();
 }
 
 // Função para cancelar operação
@@ -203,20 +147,84 @@ function cancelarOperacao() {
     limparFormulario();
     mostrarBotoes(true, false, false, false, false, false);
     bloquearCampos(false);
-    document.getElementById('searchId').focus();
+    searchId.disabled = false;
+    operacao = null;
     mostrarMensagem('Operação cancelada', 'info');
+}
+
+// Função para salvar inclusão, alteração ou exclusão
+async function salvarOperacao() {
+    if (!operacao) {
+        mostrarMensagem('Nenhuma operação selecionada', 'warning');
+        return;
+    }
+
+    const livro = {
+        titulo: document.getElementById('titulo').value.trim(),
+        isbn: document.getElementById('isbn').value.trim(),
+        ano_publicacao: parseInt(document.getElementById('ano_publicacao').value) || null,
+        paginas: parseInt(document.getElementById('paginas').value) || null,
+        editora_id: parseInt(document.getElementById('editora_id').value) || null,
+        imagem_url: document.getElementById('imagem_url').value.trim() || null
+    };
+
+    if ((operacao === 'incluir' || operacao === 'alterar') && (!livro.titulo || !livro.ano_publicacao || !livro.editora_id || !livro.isbn)) {
+        mostrarMensagem('Título, ano de publicação, ID da editora e ISBN são obrigatórios', 'warning');
+        return;
+    }
+
+    try {
+        let response;
+
+        if (operacao === 'incluir') {
+            response = await fetch(`${API_BASE_URL}/livros`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(livro)
+            });
+        } else if (operacao === 'alterar') {
+            response = await fetch(`${API_BASE_URL}/livros/${currentLivroId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(livro)
+            });
+        } else if (operacao === 'excluir') {
+            response = await fetch(`${API_BASE_URL}/livros/${currentLivroId}`, {
+                method: 'DELETE'
+            });
+        }
+
+        if (response.ok) {
+            if (operacao === 'excluir') {
+                mostrarMensagem('Livro excluído com sucesso!', 'success');
+            } else {
+                mostrarMensagem(`Livro ${operacao} com sucesso!`, 'success');
+            }
+            limparFormulario();
+            carregarLivros();
+            mostrarBotoes(true, false, false, false, false, false);
+            bloquearCampos(false);
+            searchId.disabled = false;
+            operacao = null;
+        } else {
+            const errorData = await response.json();
+            mostrarMensagem(errorData.error || 'Erro na operação', 'error');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarMensagem('Erro na operação', 'error');
+    }
 }
 
 // Função para carregar lista de livros
 async function carregarLivros() {
     try {
         const response = await fetch(`${API_BASE_URL}/livros`);
-        if (response.ok) {
-            const livros = await response.json();
-            renderizarTabelaLivros(livros);
-        } else {
+        if (!response.ok) {
             throw new Error('Erro ao carregar livros');
         }
+        const livros = await response.json();
+        renderizarTabelaLivros(livros);
     } catch (error) {
         console.error('Erro:', error);
         mostrarMensagem('Erro ao carregar lista de livros', 'error');
@@ -230,16 +238,16 @@ function renderizarTabelaLivros(livros) {
     livros.forEach(livro => {
         const row = document.createElement('tr');
         row.innerHTML = `
-                    <td>
-                        <button class="btn-id" onclick="selecionarLivro(${livro.livro_id})">
-                            ${livro.livro_id}
-                        </button>
-                    </td>
-                    <td>${livro.titulo}</td>
-                    <td>${livro.autor}</td>
-                    <td>${livro.ano_publicacao}</td>
-                    <td>${livro.editora_id}</td>
-                `;
+            <td>
+                <button class="btn-id" onclick="selecionarLivro(${livro.livro_id})">${livro.livro_id}</button>
+            </td>
+            <td>${livro.titulo}</td>
+            <td>${livro.isbn || ''}</td>
+            <td>${livro.ano_publicacao || ''}</td>
+            <td>${livro.paginas || ''}</td>
+            <td>${livro.editora_id || ''}</td>
+            <td>${livro.imagem_url ? `<img src="${livro.imagem_url}" alt="Capa" style="width: 50px; height: auto;">` : ''}</td>
+        `;
         livrosTableBody.appendChild(row);
     });
 }

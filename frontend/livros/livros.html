@@ -23,14 +23,9 @@
                     <div class="search-input-group">
                         <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
                         <button type="button" id="btnBuscar">🔍 Buscar</button>
-
                         <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
-                        <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">
-                            Alterar
-                        </button>
-                        <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">
-                            Excluir
-                        </button>
+                        <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
+                        <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
                         <button type="button" id="btnSalvar" class="btn-save" style="display: none;">Salvar</button>
                         <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
                     </div>
@@ -40,23 +35,33 @@
                     <legend>Dados do Livro</legend>
 
                     <div class="form-group">
-                        <label for="titulo_livro">Título:</label>
-                        <input type="text" id="titulo_livro" name="titulo_livro" required />
+                        <label for="titulo">Título:</label>
+                        <input type="text" id="titulo" name="titulo" required />
                     </div>
 
                     <div class="form-group">
-                        <label for="autor_livro">Autor:</label>
-                        <input type="text" id="autor_livro" name="autor_livro" required />
+                        <label for="isbn">ISBN:</label>
+                        <input type="text" id="isbn" name="isbn" required />
                     </div>
 
                     <div class="form-group">
-                        <label for="ano_publicacao_livro">Ano de Publicação:</label>
-                        <input type="number" id="ano_publicacao_livro" name="ano_publicacao_livro" required />
+                        <label for="ano_publicacao">Ano de Publicação:</label>
+                        <input type="number" id="ano_publicacao" name="ano_publicacao" />
                     </div>
 
                     <div class="form-group">
-                        <label for="editora_id_livro">ID da Editora:</label>
-                        <input type="number" id="editora_id_livro" name="editora_id_livro" required />
+                        <label for="paginas">Páginas:</label>
+                        <input type="number" id="paginas" name="paginas" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editora_id">ID da Editora:</label>
+                        <input type="number" id="editora_id" name="editora_id" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="imagem_url">URL da Imagem:</label>
+                        <input type="url" id="imagem_url" name="imagem_url" />
                     </div>
                 </fieldset>
             </form>
@@ -69,9 +74,11 @@
                         <tr>
                             <th>ID</th>
                             <th>Título</th>
-                            <th>Autor</th>
+                            <th>ISBN</th>
                             <th>Ano Publicação</th>
+                            <th>Páginas</th>
                             <th>ID Editora</th>
+                            <th>Imagem</th>
                         </tr>
                     </thead>
                     <tbody id="livrosTableBody">

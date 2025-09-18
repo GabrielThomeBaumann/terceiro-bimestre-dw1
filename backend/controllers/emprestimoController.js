@@ -8,7 +8,7 @@ exports.abrirCrudEmprestimo = (req, res) => {
 
 exports.listarEmprestimos = async (req, res) => {
   try {
-    const result = await query('SELECT * FROM emprestimo ORDER BY emprestimo_id');
+    const result = await query('SELECT * FROM emprestimos ORDER BY emprestimo_id');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao listar empréstimos:', error);
@@ -19,18 +19,18 @@ exports.listarEmprestimos = async (req, res) => {
 exports.criarEmprestimo = async (req, res) => {
   console.log('Criando empréstimo com dados:', req.body);
   try {
-    const { cliente_id, data_emprestimo, data_devolucao, status } = req.body;
+    const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status } = req.body;
 
     // Validação básica
-    if (!cliente_id || !data_emprestimo) {
+    if (!usuario_id || !data_emprestimo || !data_devolucao_prevista) {
       return res.status(400).json({
-        error: 'ID do cliente e data do empréstimo são obrigatórios'
+        error: 'ID do usuário, data do empréstimo e data de devolução prevista são obrigatórios'
       });
     }
 
     const result = await query(
-      'INSERT INTO emprestimo (cliente_id, data_emprestimo, data_devolucao, status) VALUES ($1, $2, $3, $4) RETURNING *',
-      [cliente_id, data_emprestimo, data_devolucao || null, status || null]
+      'INSERT INTO emprestimos (usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real || null, status || 'ativo']
     );
 
     res.status(201).json(result.rows[0]);
@@ -39,7 +39,7 @@ exports.criarEmprestimo = async (req, res) => {
 
     if (error.code === '23503') { // foreign_key_violation
       return res.status(400).json({
-        error: 'ID do cliente inválido'
+        error: 'ID do usuário inválido'
       });
     }
 
@@ -63,7 +63,7 @@ exports.obterEmprestimo = async (req, res) => {
     }
 
     const result = await query(
-      'SELECT * FROM emprestimo WHERE emprestimo_id = $1',
+      'SELECT * FROM emprestimos WHERE emprestimo_id = $1',
       [id]
     );
 
@@ -82,11 +82,11 @@ exports.atualizarEmprestimo = async (req, res) => {
   console.log('Atualizando empréstimo com ID:', req.params.id, 'e dados:', req.body);
   try {
     const id = parseInt(req.params.id);
-    const { cliente_id, data_emprestimo, data_devolucao, status } = req.body;
+    const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status } = req.body;
 
     // Verifica se o empréstimo existe
     const existingEmprestimoResult = await query(
-      'SELECT * FROM emprestimo WHERE emprestimo_id = $1',
+      'SELECT * FROM emprestimos WHERE emprestimo_id = $1',
       [id]
     );
 
@@ -96,15 +96,23 @@ exports.atualizarEmprestimo = async (req, res) => {
 
     const currentEmprestimo = existingEmprestimoResult.rows[0];
     const updatedFields = {
-      cliente_id: cliente_id !== undefined ? cliente_id : currentEmprestimo.cliente_id,
+      usuario_id: usuario_id !== undefined ? usuario_id : currentEmprestimo.usuario_id,
       data_emprestimo: data_emprestimo !== undefined ? data_emprestimo : currentEmprestimo.data_emprestimo,
-      data_devolucao: data_devolucao !== undefined ? data_devolucao : currentEmprestimo.data_devolucao,
+      data_devolucao_prevista: data_devolucao_prevista !== undefined ? data_devolucao_prevista : currentEmprestimo.data_devolucao_prevista,
+      data_devolucao_real: data_devolucao_real !== undefined ? data_devolucao_real : currentEmprestimo.data_devolucao_real,
       status: status !== undefined ? status : currentEmprestimo.status
     };
 
+    // Validação para campos NOT NULL
+    if (!updatedFields.usuario_id || !updatedFields.data_emprestimo || !updatedFields.data_devolucao_prevista) {
+        return res.status(400).json({
+            error: 'ID do usuário, data do empréstimo e data de devolução prevista são obrigatórios'
+        });
+    }
+
     const result = await query(
-      'UPDATE emprestimo SET cliente_id = $1, data_emprestimo = $2, data_devolucao = $3, status = $4 WHERE emprestimo_id = $5 RETURNING *',
-      [updatedFields.cliente_id, updatedFields.data_emprestimo, updatedFields.data_devolucao, updatedFields.status, id]
+      'UPDATE emprestimos SET usuario_id = $1, data_emprestimo = $2, data_devolucao_prevista = $3, data_devolucao_real = $4, status = $5 WHERE emprestimo_id = $6 RETURNING *',
+      [updatedFields.usuario_id, updatedFields.data_emprestimo, updatedFields.data_devolucao_prevista, updatedFields.data_devolucao_real, updatedFields.status, id]
     );
 
     res.json(result.rows[0]);
@@ -113,8 +121,13 @@ exports.atualizarEmprestimo = async (req, res) => {
 
     if (error.code === '23503') { // foreign_key_violation
       return res.status(400).json({
-        error: 'ID do cliente inválido'
+        error: 'ID do usuário inválido'
       });
+    }
+    if (error.code === '23502') { // not_null_violation
+        return res.status(400).json({
+            error: 'Dados obrigatórios não fornecidos'
+        });
     }
 
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -128,7 +141,7 @@ exports.deletarEmprestimo = async (req, res) => {
 
     // Verifica se o empréstimo existe
     const existingEmprestimoResult = await query(
-      'SELECT * FROM emprestimo WHERE emprestimo_id = $1',
+      'SELECT * FROM emprestimos WHERE emprestimo_id = $1',
       [id]
     );
 
@@ -138,7 +151,7 @@ exports.deletarEmprestimo = async (req, res) => {
 
     // Deleta o empréstimo (constraints CASCADE cuidarão das dependências, se configuradas)
     await query(
-      'DELETE FROM emprestimo WHERE emprestimo_id = $1',
+      'DELETE FROM emprestimos WHERE emprestimo_id = $1',
       [id]
     );
 

@@ -1,40 +1,36 @@
-// Configuração da API, IP e porta.
 const API_BASE_URL = 'http://localhost:3001';
-
-let currentEmprestimoId = null;
-let currentLivroId = null;
+let currentId = null;
 let operacao = null;
 
-// Elementos do DOM
 const form = document.getElementById('emprestimoHasLivroForm');
-const emprestimoIdInput = document.getElementById('emprestimo_id');
-const livroIdInput = document.getElementById('livro_id');
-const dataDevolucaoPrevistaInput = document.getElementById('data_devolucao_prevista');
-const dataDevolucaoRealizadaInput = document.getElementById('data_devolucao_realizada');
-
+const searchId = document.getElementById('searchId');
+const btnBuscar = document.getElementById('btnBuscar');
 const btnIncluir = document.getElementById('btnIncluir');
 const btnAlterar = document.getElementById('btnAlterar');
 const btnExcluir = document.getElementById('btnExcluir');
-const btnSalvar = document.getElementById('btnSalvar');
 const btnCancelar = document.getElementById('btnCancelar');
-
+const btnSalvar = document.getElementById('btnSalvar');
 const tableBody = document.getElementById('emprestimoHasLivroTableBody');
 const messageContainer = document.getElementById('messageContainer');
 
-// Inicializar lista ao carregar a página
+const emprestimoIdInput = document.getElementById('emprestimo_id');
+const livroIdInput = document.getElementById('livro_id');
+
+// Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    carregarEmprestimoHasLivro();
-    resetForm();
+    carregarRegistros();
 });
 
-// Event Listeners
-btnIncluir.addEventListener('click', iniciarInclusao);
-btnAlterar.addEventListener('click', iniciarAlteracao);
-btnExcluir.addEventListener('click', iniciarExclusao);
-btnSalvar.addEventListener('click', salvarOperacao);
+btnBuscar.addEventListener('click', buscarRegistro);
+btnIncluir.addEventListener('click', incluirRegistro);
+btnAlterar.addEventListener('click', alterarRegistro);
+btnExcluir.addEventListener('click', excluirRegistro);
 btnCancelar.addEventListener('click', cancelarOperacao);
+btnSalvar.addEventListener('click', salvarOperacao);
 
-// Função para mostrar mensagens
+mostrarBotoes(true, false, false, false, false, false);
+bloquearCampos(false);
+
 function mostrarMensagem(texto, tipo = 'info') {
     messageContainer.innerHTML = `<div class="message ${tipo}">${texto}</div>`;
     setTimeout(() => {
@@ -42,184 +38,208 @@ function mostrarMensagem(texto, tipo = 'info') {
     }, 3000);
 }
 
-// Função para resetar formulário e botões
-function resetForm() {
-    form.reset();
-    currentEmprestimoId = null;
-    currentLivroId = null;
-    operacao = null;
-    btnIncluir.style.display = 'inline-block';
-    btnAlterar.style.display = 'none';
-    btnExcluir.style.display = 'none';
-    btnSalvar.style.display = 'none';
-    btnCancelar.style.display = 'none';
-    habilitarCampos(true);
+function bloquearCampos(bloquear) {
+    searchId.disabled = bloquear;
+    emprestimoIdInput.disabled = !bloquear;
+    livroIdInput.disabled = !bloquear;
 }
 
-// Habilitar ou desabilitar campos
-function habilitarCampos(habilitar) {
-    emprestimoIdInput.disabled = !habilitar;
-    livroIdInput.disabled = !habilitar;
-    dataDevolucaoPrevistaInput.disabled = !habilitar;
-    dataDevolucaoRealizadaInput.disabled = !habilitar;
-}
-
-// Carregar lista de registros
-async function carregarEmprestimoHasLivro() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/emprestimohaslivro`);
-        if (!response.ok) throw new Error('Erro ao carregar dados');
-        const dados = await response.json();
-        renderizarTabela(dados);
-    } catch (error) {
-        console.error(error);
-        mostrarMensagem('Erro ao carregar lista', 'error');
-    }
-}
-
-// Renderizar tabela
-function renderizarTabela(dados) {
-    tableBody.innerHTML = '';
-    dados.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td><button class="btn-id" onclick="selecionarRegistro(${item.emprestimo_id}, ${item.livro_id})">${item.emprestimo_id}</button></td>
-            <td>${item.livro_id}</td>
-            <td>${item.data_devolucao_prevista ? item.data_devolucao_prevista.split('T')[0] : ''}</td>
-            <td>${item.data_devolucao_realizada ? item.data_devolucao_realizada.split('T')[0] : ''}</td>
-        `;
-        tableBody.appendChild(tr);
-    });
-}
-
-// Selecionar registro para alterar/excluir
-async function selecionarRegistro(emprestimoId, livroId) {
-    try {
-        const response = await fetch(`${API_BASE_URL}/emprestimohaslivro/${emprestimoId}/${livroId}`);
-        if (!response.ok) throw new Error('Registro não encontrado');
-        const item = await response.json();
-        preencherFormulario(item);
-        operacao = null;
-        btnIncluir.style.display = 'none';
-        btnAlterar.style.display = 'inline-block';
-        btnExcluir.style.display = 'inline-block';
-        btnSalvar.style.display = 'none';
-        btnCancelar.style.display = 'inline-block';
-        habilitarCampos(false);
-        currentEmprestimoId = emprestimoId;
-        currentLivroId = livroId;
-    } catch (error) {
-        console.error(error);
-        mostrarMensagem('Erro ao carregar registro', 'error');
-    }
-}
-
-// Preencher formulário com dados
-function preencherFormulario(item) {
-    emprestimoIdInput.value = item.emprestimo_id;
-    livroIdInput.value = item.livro_id;
-    dataDevolucaoPrevistaInput.value = item.data_devolucao_prevista ? item.data_devolucao_prevista.split('T')[0] : '';
-    dataDevolucaoRealizadaInput.value = item.data_devolucao_realizada ? item.data_devolucao_realizada.split('T')[0] : '';
-}
-
-// Iniciar inclusão
-function iniciarInclusao() {
-    resetForm();
-    operacao = 'incluir';
-    btnIncluir.style.display = 'none';
-    btnSalvar.style.display = 'inline-block';
-    btnCancelar.style.display = 'inline-block';
-    habilitarCampos(true);
-    emprestimoIdInput.focus();
-}
-
-// Iniciar alteração
-function iniciarAlteracao() {
-    operacao = 'alterar';
-    btnAlterar.style.display = 'none';
-    btnExcluir.style.display = 'none';
-    btnSalvar.style.display = 'inline-block';
-    btnCancelar.style.display = 'inline-block';
-    habilitarCampos(true);
-    emprestimoIdInput.disabled = true; // IDs não podem ser alterados
-    livroIdInput.disabled = true;
-}
-
-// Iniciar exclusão
-function iniciarExclusao() {
-    operacao = 'excluir';
-    btnAlterar.style.display = 'none';
-    btnExcluir.style.display = 'none';
-    btnSalvar.style.display = 'inline-block';
-    btnCancelar.style.display = 'inline-block';
-    habilitarCampos(false);
-}
-
-// Cancelar operação
-function cancelarOperacao() {
-    resetForm();
-    limparFormulario();
-    carregarEmprestimoHasLivro();
-}
-
-// Limpar formulário
 function limparFormulario() {
     form.reset();
+    searchId.disabled = false;
+    currentId = null;
 }
 
-// Salvar operação (incluir, alterar, excluir)
-async function salvarOperacao() {
-    const emprestimo_id = parseInt(emprestimoIdInput.value);
-    const livro_id = parseInt(livroIdInput.value);
-    const data_devolucao_prevista = dataDevolucaoPrevistaInput.value || null;
-    const data_devolucao_realizada = dataDevolucaoRealizadaInput.value || null;
+function mostrarBotoes(buscar, incluir, alterar, excluir, salvar, cancelar) {
+    btnBuscar.style.display = buscar ? 'inline-block' : 'none';
+    btnIncluir.style.display = incluir ? 'inline-block' : 'none';
+    btnAlterar.style.display = alterar ? 'inline-block' : 'none';
+    btnExcluir.style.display = excluir ? 'inline-block' : 'none';
+    btnSalvar.style.display = salvar ? 'inline-block' : 'none';
+    btnCancelar.style.display = cancelar ? 'inline-block' : 'none';
+}
 
-    if (!emprestimo_id || !livro_id || (operacao !== 'excluir' && !data_devolucao_prevista)) {
-        mostrarMensagem('Preencha os campos obrigatórios', 'warning');
+async function buscarRegistro() {
+    const id = searchId.value.trim();
+    if (!id) {
+        mostrarMensagem('Digite um ID para buscar', 'warning');
+        return;
+    }
+    limparFormulario();
+    searchId.value = id;
+    searchId.focus();
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/emprestimoHasLivro/${id}`);
+        if (response.ok) {
+            const registro = await response.json();
+            preencherFormulario(registro);
+            mostrarBotoes(true, false, true, true, false, true);
+            mostrarMensagem('Registro encontrado!', 'success');
+            bloquearCampos(true);
+            searchId.disabled = false;
+            currentId = registro.id;
+        } else if (response.status === 404) {
+            limparFormulario();
+            searchId.value = id;
+            mostrarBotoes(true, true, false, false, false, true);
+            mostrarMensagem('Registro não encontrado. Você pode incluir um novo.', 'info');
+            bloquearCampos(false);
+            searchId.disabled = false;
+            emprestimoIdInput.focus();
+        } else {
+            throw new Error('Erro ao buscar registro');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarMensagem('Erro ao buscar registro', 'error');
+    }
+}
+
+function preencherFormulario(registro) {
+    currentId = registro.id;
+    searchId.value = registro.id;
+    emprestimoIdInput.value = registro.emprestimo_id || '';
+    livroIdInput.value = registro.livro_id || '';
+    // Removidos campos de data
+}
+
+function incluirRegistro() {
+    mostrarMensagem('Digite os dados para o novo registro!', 'info');
+    limparFormulario();
+    bloquearCampos(true);
+    searchId.disabled = true;
+    mostrarBotoes(false, false, false, false, true, true);
+    emprestimoIdInput.focus();
+    operacao = 'incluir';
+}
+
+function alterarRegistro() {
+    if (!currentId) {
+        mostrarMensagem('Selecione um registro para alterar.', 'warning');
+        return;
+    }
+    mostrarMensagem('Altere os dados e salve!', 'info');
+    bloquearCampos(true);
+    searchId.disabled = true;
+    emprestimoIdInput.focus();
+    mostrarBotoes(false, false, false, false, true, true);
+    operacao = 'alterar';
+}
+
+function excluirRegistro() {
+    if (!currentId) {
+        mostrarMensagem('Selecione um registro para excluir.', 'warning');
+        return;
+    }
+    mostrarMensagem('Confirme a exclusão clicando em Salvar!', 'warning');
+    bloquearCampos(false);
+    searchId.disabled = true;
+    mostrarBotoes(false, false, false, false, true, true);
+    operacao = 'excluir';
+}
+
+function cancelarOperacao() {
+    limparFormulario();
+    mostrarBotoes(true, false, false, false, false, false);
+    bloquearCampos(false);
+    searchId.disabled = false;
+    searchId.focus();
+    operacao = null;
+}
+
+async function salvarOperacao() {
+    if (!operacao) {
+        mostrarMensagem('Nenhuma operação selecionada', 'warning');
         return;
     }
 
-    const body = {
-        emprestimo_id,
-        livro_id,
-        data_devolucao_prevista,
-        data_devolucao_realizada
+    const registroData = {
+        emprestimo_id: parseInt(emprestimoIdInput.value),
+        livro_id: parseInt(livroIdInput.value)
+        // Removidos campos de data
     };
+
+    if ((operacao === 'incluir' || operacao === 'alterar') && (!registroData.emprestimo_id || !registroData.livro_id)) {
+        mostrarMensagem('ID do Empréstimo e ID do Livro são obrigatórios', 'warning');
+        return;
+    }
 
     try {
         let response;
 
         if (operacao === 'incluir') {
-            response = await fetch(`${API_BASE_URL}/emprestimohaslivro`, {
+            response = await fetch(`${API_BASE_URL}/emprestimoHasLivro`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(registroData)
             });
         } else if (operacao === 'alterar') {
-            response = await fetch(`${API_BASE_URL}/emprestimohaslivro/${currentEmprestimoId}/${currentLivroId}`, {
+            response = await fetch(`${API_BASE_URL}/emprestimoHasLivro/${currentId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
+                body: JSON.stringify(registroData)
             });
         } else if (operacao === 'excluir') {
-            response = await fetch(`${API_BASE_URL}/emprestimohaslivro/${currentEmprestimoId}/${currentLivroId}`, {
+            response = await fetch(`${API_BASE_URL}/emprestimoHasLivro/${currentId}`, {
                 method: 'DELETE'
             });
-        } else {
-            mostrarMensagem('Nenhuma operação selecionada', 'warning');
-            return;
         }
 
         if (response.ok) {
-            mostrarMensagem(`Operação ${operacao} realizada com sucesso!`, 'success');
-            resetForm();
-            carregarEmprestimoHasLivro();
+            if (operacao === 'excluir') {
+                mostrarMensagem('Registro excluído com sucesso!', 'success');
+            } else {
+                mostrarMensagem(`Registro ${operacao} com sucesso!`, 'success');
+            }
+            limparFormulario();
+            carregarRegistros();
+            mostrarBotoes(true, false, false, false, false, false);
+            bloquearCampos(false);
+            searchId.disabled = false;
+            operacao = null;
         } else {
             const errorData = await response.json();
             mostrarMensagem(errorData.error || 'Erro na operação', 'error');
         }
     } catch (error) {
-        console.error(error);
+        console.error('Erro:', error);
         mostrarMensagem('Erro na operação', 'error');
     }
+}
+
+async function carregarRegistros() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/emprestimoHasLivro`);
+        if (response.ok) {
+            const registros = await response.json();
+            renderizarTabela(registros);
+        } else {
+            throw new Error('Erro ao carregar registros');
+        }
+    } catch (error) {
+        console.error('Erro:', error);
+        mostrarMensagem('Erro ao carregar lista', 'error');
+    }
+}
+
+function renderizarTabela(registros) {
+    tableBody.innerHTML = '';
+
+    registros.forEach(registro => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <button class="btn-id" onclick="selecionarRegistro(${registro.id})">${registro.id}</button>
+            </td>
+            <td>${registro.emprestimo_id}</td>
+            <td>${registro.livro_id}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+async function selecionarRegistro(id) {
+    searchId.value = id;
+    await buscarRegistro();
 }

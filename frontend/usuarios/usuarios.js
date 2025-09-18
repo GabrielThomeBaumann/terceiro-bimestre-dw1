@@ -1,37 +1,38 @@
-// Configuração da API, IP e porta.
 const API_BASE_URL = 'http://localhost:3001';
-let currentUsuarioId = null;
-let operacao = null;
 
-// Elementos do DOM
-const form = document.getElementById('usuariosForm');
 const searchId = document.getElementById('searchId');
 const btnBuscar = document.getElementById('btnBuscar');
 const btnIncluir = document.getElementById('btnIncluir');
 const btnAlterar = document.getElementById('btnAlterar');
 const btnExcluir = document.getElementById('btnExcluir');
-const btnCancelar = document.getElementById('btnCancelar');
 const btnSalvar = document.getElementById('btnSalvar');
+const btnCancelar = document.getElementById('btnCancelar');
+
+const emailInput = document.getElementById('email'); // Alterado de nomeInput
+const senhaInput = document.getElementById('senha');
+const tipoUsuarioSelect = document.getElementById('tipo_usuario'); // Alterado de tipoUsuarioInput
+
 const usuariosTableBody = document.getElementById('usuariosTableBody');
 const messageContainer = document.getElementById('messageContainer');
 
-// Carregar lista de usuários ao inicializar
+let currentUsuarioId = null;
+let operacao = null;
+
 document.addEventListener('DOMContentLoaded', () => {
     carregarUsuarios();
+    limparFormulario();
+    mostrarBotoes(true, false, false, false, false, false);
+    bloquearCampos(false);
 });
 
-// Event Listeners
+// Event listeners
 btnBuscar.addEventListener('click', buscarUsuario);
 btnIncluir.addEventListener('click', incluirUsuario);
 btnAlterar.addEventListener('click', alterarUsuario);
 btnExcluir.addEventListener('click', excluirUsuario);
-btnCancelar.addEventListener('click', cancelarOperacao);
 btnSalvar.addEventListener('click', salvarOperacao);
+btnCancelar.addEventListener('click', cancelarOperacao);
 
-mostrarBotoes(true, false, false, false, false, false);
-bloquearCampos(false);
-
-// Função para mostrar mensagens
 function mostrarMensagem(texto, tipo = 'info') {
     messageContainer.innerHTML = `<div class="message ${tipo}">${texto}</div>`;
     setTimeout(() => {
@@ -39,117 +40,97 @@ function mostrarMensagem(texto, tipo = 'info') {
     }, 3000);
 }
 
-// Função para bloquear/desbloquear campos do formulário
-function bloquearCampos(bloquearPrimeiro) {
-    const inputs = form.querySelectorAll('input');
-    inputs.forEach((input, index) => {
-        if (index === 0) {
-            input.disabled = bloquearPrimeiro; // ID bloqueado se true
-        } else {
-            input.disabled = !bloquearPrimeiro; // Outros campos liberados se bloquearPrimeiro true
-        }
-    });
+function bloquearCampos(bloquear) {
+    emailInput.disabled = bloquear; // Alterado de nomeInput
+    senhaInput.disabled = bloquear;
+    tipoUsuarioSelect.disabled = bloquear; // Alterado de tipoUsuarioInput
 }
 
-// Função para limpar formulário
 function limparFormulario() {
-    form.reset();
-    searchId.disabled = false;
+    currentUsuarioId = null;
+    searchId.value = '';
+    emailInput.value = ''; // Alterado de nomeInput
+    senhaInput.value = '';
+    tipoUsuarioSelect.value = 'comum'; // Resetar para o valor padrão
+    bloquearCampos(false);
 }
 
-// Função para mostrar/ocultar botões
-function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCancelar) {
-    btnBuscar.style.display = btBuscar ? 'inline-block' : 'none';
-    btnIncluir.style.display = btIncluir ? 'inline-block' : 'none';
-    btnAlterar.style.display = btAlterar ? 'inline-block' : 'none';
-    btnExcluir.style.display = btExcluir ? 'inline-block' : 'none';
-    btnSalvar.style.display = btSalvar ? 'inline-block' : 'none';
-    btnCancelar.style.display = btCancelar ? 'inline-block' : 'none';
+function mostrarBotoes(buscar, incluir, alterar, excluir, salvar, cancelar) {
+    btnBuscar.style.display = buscar ? 'inline-block' : 'none';
+    btnIncluir.style.display = incluir ? 'inline-block' : 'none';
+    btnAlterar.style.display = alterar ? 'inline-block' : 'none';
+    btnExcluir.style.display = excluir ? 'inline-block' : 'none';
+    btnSalvar.style.display = salvar ? 'inline-block' : 'none';
+    btnCancelar.style.display = cancelar ? 'inline-block' : 'none';
 }
 
-// Função para buscar usuário por ID
 async function buscarUsuario() {
     const id = searchId.value.trim();
     if (!id) {
         mostrarMensagem('Digite um ID para buscar', 'warning');
         return;
     }
-    bloquearCampos(false);
-    searchId.focus();
     try {
         const response = await fetch(`${API_BASE_URL}/usuarios/${id}`);
-
         if (response.ok) {
             const usuario = await response.json();
             preencherFormulario(usuario);
-
-            mostrarBotoes(true, false, true, true, false, false);
             mostrarMensagem('Usuário encontrado!', 'success');
-
+            mostrarBotoes(true, false, true, true, false, false);
+            bloquearCampos(true);
+            currentUsuarioId = usuario.usuario_id;
         } else if (response.status === 404) {
+            mostrarMensagem('Usuário não encontrado. Você pode incluir um novo usuário.', 'info');
             limparFormulario();
             searchId.value = id;
             mostrarBotoes(true, true, false, false, false, false);
-            mostrarMensagem('Usuário não encontrado. Você pode incluir um novo usuário.', 'info');
             bloquearCampos(false);
         } else {
             throw new Error('Erro ao buscar usuário');
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error(error);
         mostrarMensagem('Erro ao buscar usuário', 'error');
     }
 }
 
-// Função para preencher formulário com dados do usuário
 function preencherFormulario(usuario) {
     currentUsuarioId = usuario.usuario_id;
     searchId.value = usuario.usuario_id;
-    document.getElementById('nome').value = usuario.nome || '';
-    document.getElementById('email').value = usuario.email || '';
-    document.getElementById('senha').value = ''; // Por segurança, não preenche a senha
-    document.getElementById('tipo_usuario').value = usuario.tipo_usuario || '';
+    emailInput.value = usuario.email || ''; // Alterado de nomeInput
+    // Não preencher a senha por segurança
+    senhaInput.value = '';
+    tipoUsuarioSelect.value = usuario.tipo_usuario || 'comum'; // Alterado de tipoUsuarioInput
 }
 
-// Função para iniciar inclusão de usuário
 function incluirUsuario() {
-    mostrarMensagem('Digite os dados!', 'info');
     limparFormulario();
-    bloquearCampos(true);
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('nome').focus();
+    bloquearCampos(false);
+    emailInput.focus(); // Alterado de nomeInput
     operacao = 'incluir';
 }
 
-// Função para iniciar alteração de usuário
 function alterarUsuario() {
-    mostrarMensagem('Digite os dados para alterar!', 'info');
-    bloquearCampos(true);
     mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('nome').focus();
+    bloquearCampos(false);
+    emailInput.focus(); // Alterado de nomeInput
     operacao = 'alterar';
 }
 
-// Função para iniciar exclusão de usuário
 function excluirUsuario() {
-    mostrarMensagem('Confirme a exclusão!', 'warning');
-    bloquearCampos(false);
-    searchId.disabled = true;
     mostrarBotoes(false, false, false, false, true, true);
+    bloquearCampos(true);
     operacao = 'excluir';
 }
 
-// Função para cancelar operação
 function cancelarOperacao() {
     limparFormulario();
     mostrarBotoes(true, false, false, false, false, false);
     bloquearCampos(false);
-    searchId.disabled = false;
     operacao = null;
-    mostrarMensagem('Operação cancelada', 'info');
 }
 
-// Função para salvar inclusão, alteração ou exclusão
 async function salvarOperacao() {
     if (!operacao) {
         mostrarMensagem('Nenhuma operação selecionada', 'warning');
@@ -157,16 +138,20 @@ async function salvarOperacao() {
     }
 
     const usuario = {
-        nome: document.getElementById('nome').value.trim(),
-        email: document.getElementById('email').value.trim(),
-        senha: document.getElementById('senha').value,
-        tipo_usuario: document.getElementById('tipo_usuario').value.trim() || null
+        email: emailInput.value.trim(), // Alterado de nome
+        senha: senhaInput.value,
+        tipo_usuario: tipoUsuarioSelect.value // Alterado de tipo_usuario
     };
 
-    if ((operacao === 'incluir' || operacao === 'alterar') && (!usuario.nome || !usuario.email || !usuario.senha)) {
-        mostrarMensagem('Nome, email e senha são obrigatórios', 'warning');
+    if ((operacao === 'incluir' || operacao === 'alterar') && (!usuario.email || !usuario.senha)) {
+        mostrarMensagem('Email e senha são obrigatórios', 'warning');
         return;
     }
+    // Se for alteração e a senha não for fornecida, não enviar a senha para o backend
+    if (operacao === 'alterar' && !usuario.senha) {
+        delete usuario.senha;
+    }
+
 
     try {
         let response;
@@ -178,10 +163,6 @@ async function salvarOperacao() {
                 body: JSON.stringify(usuario)
             });
         } else if (operacao === 'alterar') {
-            // Se senha estiver vazia, não enviar para não alterar
-            if (!usuario.senha) {
-                delete usuario.senha;
-            }
             response = await fetch(`${API_BASE_URL}/usuarios/${currentUsuarioId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
@@ -194,62 +175,50 @@ async function salvarOperacao() {
         }
 
         if (response.ok) {
-            if (operacao === 'excluir') {
-                mostrarMensagem('Usuário excluído com sucesso!', 'success');
-            } else {
-                mostrarMensagem(`Usuário ${operacao} com sucesso!`, 'success');
-            }
+            mostrarMensagem(`Usuário ${operacao} com sucesso!`, 'success');
             limparFormulario();
             carregarUsuarios();
             mostrarBotoes(true, false, false, false, false, false);
             bloquearCampos(false);
-            searchId.disabled = false;
             operacao = null;
         } else {
             const errorData = await response.json();
             mostrarMensagem(errorData.error || 'Erro na operação', 'error');
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error(error);
         mostrarMensagem('Erro na operação', 'error');
     }
 }
 
-// Função para carregar lista de usuários
 async function carregarUsuarios() {
     try {
         const response = await fetch(`${API_BASE_URL}/usuarios`);
-        if (response.ok) {
-            const usuarios = await response.json();
-            renderizarTabelaUsuarios(usuarios);
-        } else {
-            throw new Error('Erro ao carregar usuários');
-        }
+        if (!response.ok) throw new Error('Erro ao carregar usuários');
+        const usuarios = await response.json();
+
+        usuariosTableBody.innerHTML = '';
+
+        usuarios.forEach(usuario => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>
+                    <button class="btn-id" onclick="selecionarUsuario(${usuario.usuario_id})">
+                        ${usuario.usuario_id}
+                    </button>
+                </td>
+                <td>${usuario.email}</td>
+                <td>${usuario.tipo_usuario || 'comum'}</td>
+                <td>${usuario.data_criacao ? new Date(usuario.data_criacao).toLocaleString() : ''}</td>
+            `;
+            usuariosTableBody.appendChild(tr);
+        });
     } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao carregar lista de usuários', 'error');
+        console.error(error);
+        mostrarMensagem('Erro ao carregar usuários', 'error');
     }
 }
 
-// Função para renderizar tabela de usuários
-function renderizarTabelaUsuarios(usuarios) {
-    usuariosTableBody.innerHTML = '';
-
-    usuarios.forEach(usuario => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-            <td>
-                <button class="btn-id" onclick="selecionarUsuario(${usuario.usuario_id})">${usuario.usuario_id}</button>
-            </td>
-            <td>${usuario.nome}</td>
-            <td>${usuario.email}</td>
-            <td>${usuario.tipo_usuario || ''}</td>
-        `;
-        usuariosTableBody.appendChild(row);
-    });
-}
-
-// Função para selecionar usuário da tabela
 async function selecionarUsuario(id) {
     searchId.value = id;
     await buscarUsuario();

@@ -15,6 +15,14 @@ const btnSalvar = document.getElementById('btnSalvar');
 const emprestimoTableBody = document.getElementById('emprestimoTableBody');
 const messageContainer = document.getElementById('messageContainer');
 
+// Novos campos do formulário
+const usuarioIdInput = document.getElementById('usuario_id');
+const dataEmprestimoInput = document.getElementById('data_emprestimo');
+const dataDevolucaoPrevistaInput = document.getElementById('data_devolucao_prevista');
+const dataDevolucaoRealInput = document.getElementById('data_devolucao_real');
+const statusInput = document.getElementById('status');
+
+
 // Carregar lista de empréstimos ao inicializar
 document.addEventListener('DOMContentLoaded', () => {
     carregarEmprestimos();
@@ -41,20 +49,19 @@ function mostrarMensagem(texto, tipo = 'info') {
 
 // Função para bloquear/desbloquear campos do formulário
 function bloquearCampos(bloquearPrimeiro) {
-    const inputs = form.querySelectorAll('input');
-    inputs.forEach((input, index) => {
-        if (index === 0) {
-            input.disabled = bloquearPrimeiro; // ID bloqueado se true
-        } else {
-            input.disabled = !bloquearPrimeiro; // Outros campos liberados se bloquearPrimeiro true
-        }
-    });
+    searchId.disabled = bloquearPrimeiro; // ID de busca sempre controlável
+    usuarioIdInput.disabled = !bloquearPrimeiro;
+    dataEmprestimoInput.disabled = !bloquearPrimeiro;
+    dataDevolucaoPrevistaInput.disabled = !bloquearPrimeiro;
+    dataDevolucaoRealInput.disabled = !bloquearPrimeiro;
+    statusInput.disabled = !bloquearPrimeiro;
 }
 
 // Função para limpar formulário
 function limparFormulario() {
     form.reset();
     searchId.disabled = false;
+    currentEmprestimoId = null;
 }
 
 // Função para mostrar/ocultar botões
@@ -74,7 +81,8 @@ async function buscarEmprestimo() {
         mostrarMensagem('Digite um ID para buscar', 'warning');
         return;
     }
-    bloquearCampos(false);
+    limparFormulario(); // Limpa antes de buscar para evitar dados antigos
+    searchId.value = id; // Mantém o ID buscado no campo
     searchId.focus();
     try {
         const response = await fetch(`${API_BASE_URL}/emprestimo/${id}`);
@@ -83,15 +91,20 @@ async function buscarEmprestimo() {
             const emprestimo = await response.json();
             preencherFormulario(emprestimo);
 
-            mostrarBotoes(true, false, true, true, false, false);
+            mostrarBotoes(true, false, true, true, false, true); // Buscar, Alterar, Excluir, Cancelar
             mostrarMensagem('Empréstimo encontrado!', 'success');
+            bloquearCampos(true); // Bloqueia campos para visualização
+            searchId.disabled = false; // Mantém o campo de busca habilitado
+            currentEmprestimoId = emprestimo.emprestimo_id;
 
         } else if (response.status === 404) {
             limparFormulario();
             searchId.value = id;
-            mostrarBotoes(true, true, false, false, false, false);
+            mostrarBotoes(true, true, false, false, false, true); // Buscar, Incluir, Cancelar
             mostrarMensagem('Empréstimo não encontrado. Você pode incluir um novo empréstimo.', 'info');
-            bloquearCampos(false);
+            bloquearCampos(false); // Libera campos para inclusão
+            searchId.disabled = false;
+            usuarioIdInput.focus();
         } else {
             throw new Error('Erro ao buscar empréstimo');
         }
@@ -105,46 +118,58 @@ async function buscarEmprestimo() {
 function preencherFormulario(emprestimo) {
     currentEmprestimoId = emprestimo.emprestimo_id;
     searchId.value = emprestimo.emprestimo_id;
-    document.getElementById('cliente_id').value = emprestimo.cliente_id || '';
-    document.getElementById('data_emprestimo').value = emprestimo.data_emprestimo ? emprestimo.data_emprestimo.split('T')[0] : '';
-    document.getElementById('data_devolucao').value = emprestimo.data_devolucao ? emprestimo.data_devolucao.split('T')[0] : '';
-    document.getElementById('status').value = emprestimo.status || '';
+    usuarioIdInput.value = emprestimo.usuario_id || '';
+    dataEmprestimoInput.value = emprestimo.data_emprestimo ? emprestimo.data_emprestimo.split('T')[0] : '';
+    dataDevolucaoPrevistaInput.value = emprestimo.data_devolucao_prevista ? emprestimo.data_devolucao_prevista.split('T')[0] : '';
+    dataDevolucaoRealInput.value = emprestimo.data_devolucao_real ? emprestimo.data_devolucao_real.split('T')[0] : '';
+    statusInput.value = emprestimo.status || 'ativo';
 }
 
 // Função para iniciar inclusão de empréstimo
 function incluirEmprestimo() {
-    mostrarMensagem('Digite os dados!', 'info');
+    mostrarMensagem('Digite os dados para o novo empréstimo!', 'info');
     limparFormulario();
-    bloquearCampos(true);
-    mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('cliente_id').focus();
+    bloquearCampos(true); // Bloqueia o ID de busca, libera os outros
+    searchId.disabled = true; // Desabilita o campo de ID para inclusão
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
+    usuarioIdInput.focus();
     operacao = 'incluir';
 }
 
 // Função para iniciar alteração de empréstimo
 function alterarEmprestimo() {
-    mostrarMensagem('Digite os dados para alterar!', 'info');
-    bloquearCampos(true);
-    mostrarBotoes(false, false, false, false, true, true);
-    document.getElementById('cliente_id').focus();
+    if (!currentEmprestimoId) {
+        mostrarMensagem('Selecione um empréstimo para alterar.', 'warning');
+        return;
+    }
+    mostrarMensagem('Altere os dados e salve!', 'info');
+    bloquearCampos(true); // Bloqueia o ID de busca, libera os outros
+    searchId.disabled = true; // Desabilita o campo de ID para alteração
+    usuarioIdInput.focus();
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     operacao = 'alterar';
 }
 
 // Função para iniciar exclusão de empréstimo
 function excluirEmprestimo() {
-    mostrarMensagem('Confirme a exclusão!', 'warning');
-    bloquearCampos(false);
-    searchId.disabled = true;
-    mostrarBotoes(false, false, false, false, true, true);
+    if (!currentEmprestimoId) {
+        mostrarMensagem('Selecione um empréstimo para excluir.', 'warning');
+        return;
+    }
+    mostrarMensagem('Confirme a exclusão clicando em Salvar!', 'warning');
+    bloquearCampos(false); // Bloqueia todos os campos para evitar edição acidental
+    searchId.disabled = true; // Desabilita o campo de ID
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     operacao = 'excluir';
 }
 
 // Função para cancelar operação
 function cancelarOperacao() {
     limparFormulario();
-    mostrarBotoes(true, false, false, false, false, false);
-    bloquearCampos(false);
+    mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
+    bloquearCampos(false); // Libera o campo de busca, bloqueia os outros
     searchId.disabled = false;
+    searchId.focus();
     operacao = null;
     mostrarMensagem('Operação cancelada', 'info');
 }
@@ -156,15 +181,16 @@ async function salvarOperacao() {
         return;
     }
 
-    const emprestimo = {
-        cliente_id: parseInt(document.getElementById('cliente_id').value),
-        data_emprestimo: document.getElementById('data_emprestimo').value || null,
-        data_devolucao: document.getElementById('data_devolucao').value || null,
-        status: document.getElementById('status').value.trim() || null
+    const emprestimoData = {
+        usuario_id: parseInt(usuarioIdInput.value),
+        data_emprestimo: dataEmprestimoInput.value,
+        data_devolucao_prevista: dataDevolucaoPrevistaInput.value,
+        data_devolucao_real: dataDevolucaoRealInput.value || null,
+        status: statusInput.value || 'ativo'
     };
 
-    if ((operacao === 'incluir' || operacao === 'alterar') && (!emprestimo.cliente_id || !emprestimo.data_emprestimo)) {
-        mostrarMensagem('ID do cliente e data do empréstimo são obrigatórios', 'warning');
+    if ((operacao === 'incluir' || operacao === 'alterar') && (!emprestimoData.usuario_id || !emprestimoData.data_emprestimo || !emprestimoData.data_devolucao_prevista)) {
+        mostrarMensagem('ID do Usuário, Data do Empréstimo e Data de Devolução Prevista são obrigatórios', 'warning');
         return;
     }
 
@@ -175,13 +201,13 @@ async function salvarOperacao() {
             response = await fetch(`${API_BASE_URL}/emprestimo`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(emprestimo)
+                body: JSON.stringify(emprestimoData)
             });
         } else if (operacao === 'alterar') {
             response = await fetch(`${API_BASE_URL}/emprestimo/${currentEmprestimoId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(emprestimo)
+                body: JSON.stringify(emprestimoData)
             });
         } else if (operacao === 'excluir') {
             response = await fetch(`${API_BASE_URL}/emprestimo/${currentEmprestimoId}`, {
@@ -197,8 +223,8 @@ async function salvarOperacao() {
             }
             limparFormulario();
             carregarEmprestimos();
-            mostrarBotoes(true, false, false, false, false, false);
-            bloquearCampos(false);
+            mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
+            bloquearCampos(false); // Libera o campo de busca, bloqueia os outros
             searchId.disabled = false;
             operacao = null;
         } else {
@@ -237,9 +263,10 @@ function renderizarTabelaEmprestimos(emprestimos) {
             <td>
                 <button class="btn-id" onclick="selecionarEmprestimo(${emprestimo.emprestimo_id})">${emprestimo.emprestimo_id}</button>
             </td>
-            <td>${emprestimo.cliente_id}</td>
+            <td>${emprestimo.usuario_id}</td>
             <td>${emprestimo.data_emprestimo ? emprestimo.data_emprestimo.split('T')[0] : ''}</td>
-            <td>${emprestimo.data_devolucao ? emprestimo.data_devolucao.split('T')[0] : ''}</td>
+            <td>${emprestimo.data_devolucao_prevista ? emprestimo.data_devolucao_prevista.split('T')[0] : ''}</td>
+            <td>${emprestimo.data_devolucao_real ? emprestimo.data_devolucao_real.split('T')[0] : ''}</td>
             <td>${emprestimo.status || ''}</td>
         `;
         emprestimoTableBody.appendChild(row);

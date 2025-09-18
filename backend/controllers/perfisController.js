@@ -2,13 +2,12 @@ const { query } = require('../database');
 const path = require('path');
 
 exports.abrirCrudPerfis = (req, res) => {
-  console.log('perfisController - Rota /abrirCrudPerfis - abrir o crudPerfis');
   res.sendFile(path.join(__dirname, '../../frontend/perfis/perfis.html'));
 }
 
 exports.listarPerfis = async (req, res) => {
   try {
-    const result = await query('SELECT * FROM perfis ORDER BY perfil_id');
+    const result = await query('SELECT usuario_id, nome_completo, telefone, endereco, data_nascimento FROM perfis ORDER BY usuario_id');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao listar perfis:', error);
@@ -17,52 +16,40 @@ exports.listarPerfis = async (req, res) => {
 }
 
 exports.criarPerfil = async (req, res) => {
-  console.log('Criando perfil com dados:', req.body);
   try {
-    const { nome_perfil, descricao } = req.body;
+    const { usuario_id, nome_completo, telefone, endereco, data_nascimento } = req.body;
 
-    if (!nome_perfil) {
-      return res.status(400).json({
-        error: 'Nome do perfil é obrigatório'
-      });
+    if (!usuario_id || !nome_completo) {
+      return res.status(400).json({ error: 'ID do usuário e Nome completo são obrigatórios' });
     }
 
     const result = await query(
-      'INSERT INTO perfis (nome_perfil, descricao) VALUES ($1, $2) RETURNING *',
-      [nome_perfil, descricao || null]
+      'INSERT INTO perfis (usuario_id, nome_completo, telefone, endereco, data_nascimento) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [usuario_id, nome_completo, telefone || null, endereco || null, data_nascimento || null]
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao criar perfil:', error);
-
-    if (error.code === '23505') { // unique_violation
-      return res.status(400).json({
-        error: 'Nome do perfil já existe'
-      });
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Perfil para este usuário já existe' });
     }
-
-    if (error.code === '23502') { // not_null_violation
-      return res.status(400).json({
-        error: 'Dados obrigatórios não fornecidos'
-      });
+    if (error.code === '23503') {
+      return res.status(400).json({ error: 'ID de usuário inválido' });
     }
-
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
 
 exports.obterPerfil = async (req, res) => {
-  console.log('Obtendo perfil com ID:', req.params.id);
   try {
     const id = parseInt(req.params.id);
-
     if (isNaN(id)) {
       return res.status(400).json({ error: 'ID deve ser um número válido' });
     }
 
     const result = await query(
-      'SELECT * FROM perfis WHERE perfil_id = $1',
+      'SELECT usuario_id, nome_completo, telefone, endereco, data_nascimento FROM perfis WHERE usuario_id = $1',
       [id]
     );
 
@@ -78,77 +65,48 @@ exports.obterPerfil = async (req, res) => {
 }
 
 exports.atualizarPerfil = async (req, res) => {
-  console.log('Atualizando perfil com ID:', req.params.id, 'e dados:', req.body);
   try {
     const id = parseInt(req.params.id);
-    const { nome_perfil, descricao } = req.body;
+    const { nome_completo, telefone, endereco, data_nascimento } = req.body;
 
-    // Verifica se o perfil existe
-    const existingPerfilResult = await query(
-      'SELECT * FROM perfis WHERE perfil_id = $1',
-      [id]
-    );
-
+    const existingPerfilResult = await query('SELECT * FROM perfis WHERE usuario_id = $1', [id]);
     if (existingPerfilResult.rows.length === 0) {
       return res.status(404).json({ error: 'Perfil não encontrado' });
     }
 
     const currentPerfil = existingPerfilResult.rows[0];
     const updatedFields = {
-      nome_perfil: nome_perfil !== undefined ? nome_perfil : currentPerfil.nome_perfil,
-      descricao: descricao !== undefined ? descricao : currentPerfil.descricao
+      nome_completo: nome_completo !== undefined ? nome_completo : currentPerfil.nome_completo,
+      telefone: telefone !== undefined ? telefone : currentPerfil.telefone,
+      endereco: endereco !== undefined ? endereco : currentPerfil.endereco,
+      data_nascimento: data_nascimento !== undefined ? data_nascimento : currentPerfil.data_nascimento
     };
 
     const result = await query(
-      'UPDATE perfis SET nome_perfil = $1, descricao = $2 WHERE perfil_id = $3 RETURNING *',
-      [updatedFields.nome_perfil, updatedFields.descricao, id]
+      'UPDATE perfis SET nome_completo = $1, telefone = $2, endereco = $3, data_nascimento = $4 WHERE usuario_id = $5 RETURNING *',
+      [updatedFields.nome_completo, updatedFields.telefone, updatedFields.endereco, updatedFields.data_nascimento, id]
     );
 
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao atualizar perfil:', error);
-
-    if (error.code === '23505') { // unique_violation
-      return res.status(400).json({
-        error: 'Nome do perfil já existe'
-      });
-    }
-
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }
 
 exports.deletarPerfil = async (req, res) => {
-  console.log('Deletando perfil com ID:', req.params.id);
   try {
     const id = parseInt(req.params.id);
 
-    // Verifica se o perfil existe
-    const existingPerfilResult = await query(
-      'SELECT * FROM perfis WHERE perfil_id = $1',
-      [id]
-    );
-
+    const existingPerfilResult = await query('SELECT * FROM perfis WHERE usuario_id = $1', [id]);
     if (existingPerfilResult.rows.length === 0) {
       return res.status(404).json({ error: 'Perfil não encontrado' });
     }
 
-    // Deleta o perfil (constraints CASCADE cuidarão das dependências, se configuradas)
-    await query(
-      'DELETE FROM perfis WHERE perfil_id = $1',
-      [id]
-    );
-
-    res.status(204).send(); // No Content
+    await query('DELETE FROM perfis WHERE usuario_id = $1', [id]);
+    res.status(204).send();
   } catch (error) {
     console.error('Erro ao deletar perfil:', error);
-
-    if (error.code === '23503') {
-      return res.status(400).json({
-        error: 'Não é possível deletar perfil com dependências associadas'
-      });
-    }
-
     res.status(500).json({ error: 'Erro interno do servidor' });
   }
 }

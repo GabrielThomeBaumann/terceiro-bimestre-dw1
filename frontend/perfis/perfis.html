@@ -19,42 +19,58 @@
 
             <form id="perfisForm">
                 <div class="search-container">
-                    <label for="searchId">Buscar por ID:</label>
-                    <div class="search-input-group">
-                        <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
-                        <button type="button" id="btnBuscar">🔍 Buscar</button>
-                        <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
-                        <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
-                        <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
-                        <button type="button" id="btnSalvar" class="btn-save" style="display: none;">Salvar</button>
-                        <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
-                    </div>
+                    <label for="searchId">Buscar por ID do Usuário:</label>
+                    <input type="number" id="searchId" placeholder="Digite o ID do Usuário para buscar" />
+                    <button type="button" id="btnBuscar">Buscar</button>
+                    <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
+                    <button type="button" id="btnAlterar" class="btn-secondary" style="display:none;">Alterar</button>
+                    <button type="button" id="btnExcluir" class="btn-danger" style="display:none;">Excluir</button>
+                    <button type="button" id="btnSalvar" class="btn-save" style="display:none;">Salvar</button>
+                    <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
                 </div>
 
                 <fieldset id="formFields">
                     <legend>Dados do Perfil</legend>
 
                     <div class="form-group">
-                        <label for="nome_perfil">Nome do Perfil:</label>
-                        <input type="text" id="nome_perfil" name="nome_perfil" required />
+                        <label for="usuario_id">ID do Usuário:</label>
+                        <input type="number" id="usuario_id" name="usuario_id" required />
                     </div>
 
                     <div class="form-group">
-                        <label for="descricao">Descrição:</label>
-                        <input type="text" id="descricao" name="descricao" />
+                        <label for="nome_completo">Nome Completo:</label>
+                        <input type="text" id="nome_completo" name="nome_completo" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="telefone">Telefone:</label>
+                        <input type="text" id="telefone" name="telefone" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="endereco">Endereço:</label>
+                        <input type="text" id="endereco" name="endereco" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_nascimento">Data de Nascimento:</label>
+                        <input type="date" id="data_nascimento" name="data_nascimento" />
                     </div>
                 </fieldset>
             </form>
         </section>
 
         <section class="list-section">
+            <h2>Lista de Perfis</h2>
             <div class="table-container">
                 <table id="perfisTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>Nome do Perfil</th>
-                            <th>Descrição</th>
+                            <th>ID Usuário</th>
+                            <th>Nome Completo</th>
+                            <th>Telefone</th>
+                            <th>Endereço</th>
+                            <th>Data de Nascimento</th>
                         </tr>
                     </thead>
                     <tbody id="perfisTableBody">

@@ -1,8 +1,7 @@
 const { query } = require('../database');
 const path = require('path');
-const bcrypt = require('bcrypt'); // Para hash de senha (recomendado)
+const bcrypt = require('bcrypt');
 
-// Configuração do bcrypt
 const saltRounds = 10;
 
 exports.abrirCrudUsuarios = (req, res) => {
@@ -12,7 +11,7 @@ exports.abrirCrudUsuarios = (req, res) => {
 
 exports.listarUsuarios = async (req, res) => {
   try {
-    const result = await query('SELECT usuario_id, nome, email, tipo_usuario FROM usuarios ORDER BY usuario_id');
+    const result = await query('SELECT usuario_id, email, tipo, data_criacao FROM usuarios ORDER BY usuario_id');
     res.json(result.rows);
   } catch (error) {
     console.error('Erro ao listar usuários:', error);
@@ -21,39 +20,26 @@ exports.listarUsuarios = async (req, res) => {
 }
 
 exports.criarUsuario = async (req, res) => {
-  console.log('Criando usuário com dados:', req.body);
   try {
-    const { nome, email, senha, tipo_usuario } = req.body;
+    const { email, senha, tipo } = req.body;
 
-    // Validação básica
-    if (!nome || !email || !senha) {
-      return res.status(400).json({
-        error: 'Nome, email e senha são obrigatórios'
-      });
+    if (!email || !senha) {
+      return res.status(400).json({ error: 'Email e senha são obrigatórios' });
     }
 
-    // Hash da senha
     const senhaHash = await bcrypt.hash(senha, saltRounds);
 
     const result = await query(
-      'INSERT INTO usuarios (nome, email, senha, tipo_usuario) VALUES ($1, $2, $3, $4) RETURNING usuario_id, nome, email, tipo_usuario',
-      [nome, email, senhaHash, tipo_usuario || null]
+      'INSERT INTO usuarios (email, senha, tipo) VALUES ($1, $2, $3) RETURNING usuario_id, email, tipo, data_criacao',
+      [email, senhaHash, tipo || 'comum']
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao criar usuário:', error);
 
-    if (error.code === '23505') { // unique_violation (email duplicado)
-      return res.status(400).json({
-        error: 'Email já cadastrado'
-      });
-    }
-
-    if (error.code === '23502') { // not_null_violation
-      return res.status(400).json({
-        error: 'Dados obrigatórios não fornecidos'
-      });
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -61,16 +47,15 @@ exports.criarUsuario = async (req, res) => {
 }
 
 exports.obterUsuario = async (req, res) => {
-  console.log('Obtendo usuário com ID:', req.params.id);
   try {
     const id = parseInt(req.params.id);
 
     if (isNaN(id)) {
-      return res.status(400).json({ error: 'ID deve ser um número válido' });
+      return res.status(400).json({ error: 'ID inválido' });
     }
 
     const result = await query(
-      'SELECT usuario_id, nome, email, tipo_usuario FROM usuarios WHERE usuario_id = $1',
+      'SELECT usuario_id, email, tipo, data_criacao FROM usuarios WHERE usuario_id = $1',
       [id]
     );
 
@@ -86,12 +71,10 @@ exports.obterUsuario = async (req, res) => {
 }
 
 exports.atualizarUsuario = async (req, res) => {
-  console.log('Atualizando usuário com ID:', req.params.id, 'e dados:', req.body);
   try {
     const id = parseInt(req.params.id);
-    const { nome, email, senha, tipo_usuario } = req.body;
+    const { email, senha, tipo } = req.body;
 
-    // Verifica se o usuário existe
     const existingUsuarioResult = await query(
       'SELECT * FROM usuarios WHERE usuario_id = $1',
       [id]
@@ -103,30 +86,25 @@ exports.atualizarUsuario = async (req, res) => {
 
     const currentUsuario = existingUsuarioResult.rows[0];
 
-    // Se senha for fornecida, faz hash, senão mantém a atual
     let senhaHash = currentUsuario.senha;
-    if (senha !== undefined && senha !== null && senha !== '') {
+    if (senha) {
       senhaHash = await bcrypt.hash(senha, saltRounds);
     }
 
-    // Atualiza o usuário
-    const updatedNome = nome !== undefined ? nome : currentUsuario.nome;
-    const updatedEmail = email !== undefined ? email : currentUsuario.email;
-    const updatedTipoUsuario = tipo_usuario !== undefined ? tipo_usuario : currentUsuario.tipo_usuario;
+    const updatedEmail = email || currentUsuario.email;
+    const updatedTipo = tipo || currentUsuario.tipo;
 
     const result = await query(
-      'UPDATE usuarios SET nome = $1, email = $2, senha = $3, tipo_usuario = $4 WHERE usuario_id = $5 RETURNING usuario_id, nome, email, tipo_usuario',
-      [updatedNome, updatedEmail, senhaHash, updatedTipoUsuario, id]
+      'UPDATE usuarios SET email = $1, senha = $2, tipo = $3 WHERE usuario_id = $4 RETURNING usuario_id, email, tipo, data_criacao',
+      [updatedEmail, senhaHash, updatedTipo, id]
     );
 
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Erro ao atualizar usuário:', error);
 
-    if (error.code === '23505') { // unique_violation (email duplicado)
-      return res.status(400).json({
-        error: 'Email já cadastrado'
-      });
+    if (error.code === '23505') {
+      return res.status(400).json({ error: 'Email já cadastrado' });
     }
 
     res.status(500).json({ error: 'Erro interno do servidor' });
@@ -134,11 +112,9 @@ exports.atualizarUsuario = async (req, res) => {
 }
 
 exports.deletarUsuario = async (req, res) => {
-  console.log('Deletando usuário com ID:', req.params.id);
   try {
     const id = parseInt(req.params.id);
 
-    // Verifica se o usuário existe
     const existingUsuarioResult = await query(
       'SELECT * FROM usuarios WHERE usuario_id = $1',
       [id]
@@ -148,21 +124,14 @@ exports.deletarUsuario = async (req, res) => {
       return res.status(404).json({ error: 'Usuário não encontrado' });
     }
 
-    // Deleta o usuário (constraints CASCADE cuidarão das dependências, se configuradas)
-    await query(
-      'DELETE FROM usuarios WHERE usuario_id = $1',
-      [id]
-    );
+    await query('DELETE FROM usuarios WHERE usuario_id = $1', [id]);
 
-    res.status(204).send(); // No Content
+    res.status(204).send();
   } catch (error) {
     console.error('Erro ao deletar usuário:', error);
 
-    // Verifica se é erro de violação de foreign key (dependências)
     if (error.code === '23503') {
-      return res.status(400).json({
-        error: 'Não é possível deletar usuário com dependências associadas'
-      });
+      return res.status(400).json({ error: 'Não é possível deletar usuário com dependências associadas' });
     }
 
     res.status(500).json({ error: 'Erro interno do servidor' });
