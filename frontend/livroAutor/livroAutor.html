@@ -15,94 +15,63 @@
 
     <main>
         <section class="form-section">
-            <h2>Gerenciar Associação Livro - Autor</h2>
+            <h2>Cadastro de Associação Livro-Autor</h2>
 
             <form id="livroAutorForm">
                 <div class="search-container">
-                    <label for="searchLivroId">Buscar Livro por ID:</label>
-                    <input type="number" id="searchLivroId" placeholder="Digite o ID do livro" />
-                    <button type="button" id="btnBuscarLivro">Buscar Livro</button>
-                </div>
+                    <label for="searchLivroId">Buscar por Livro:</label>
+                    <select id="searchLivroId" name="searchLivroId">
+                        <option value="">Selecione um Livro</option>
+                    </select>
 
-                <div class="search-container">
-                    <label for="searchAutorId">Buscar Autor por ID:</label>
-                    <input type="number" id="searchAutorId" placeholder="Digite o ID do autor" />
-                    <button type="button" id="btnBuscarAutor">Buscar Autor</button>
+                    <label for="searchAutorId">Buscar por Autor:</label>
+                    <select id="searchAutorId" name="searchAutorId">
+                        <option value="">Selecione um Autor</option>
+                    </select>
+
+                    <div class="button-group">
+                        <button type="button" id="btnBuscar">🔍 Buscar</button>
+                        <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
+                        <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
+                        <button type="button" id="btnSalvar" class="btn-save" style="display: none;">Salvar</button>
+                        <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
+                    </div>
                 </div>
 
                 <fieldset id="formFields">
                     <legend>Dados da Associação</legend>
 
                     <div class="form-group">
-                        <label for="livro_id">ID do Livro:</label>
-                        <input type="number" id="livro_id" name="livro_id" required />
+                        <label for="livro_id">Livro:</label>
+                        <select id="livro_id" name="livro_id" required>
+                            <option value="">Selecione um Livro</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="autor_id">ID do Autor:</label>
-                        <input type="number" id="autor_id" name="autor_id" required />
-                    </div>
-
-                    <div class="buttons-group">
-                        <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
-                        <button type="button" id="btnExcluir" class="btn-danger">Excluir</button>
-                        <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
+                        <label for="autor_id">Autor:</label>
+                        <select id="autor_id" name="autor_id" required>
+                            <option value="">Selecione um Autor</option>
+                        </select>
                     </div>
                 </fieldset>
             </form>
         </section>
 
         <section class="list-section">
-            <h2>Associações Livro - Autor</h2>
+            <h2>Lista de Associações Livro-Autor</h2>
             <div class="table-container">
                 <table id="livroAutorTable">
                     <thead>
                         <tr>
-                            <th>ID Livro</th>
+                            <th>ID do Livro</th>
                             <th>Título do Livro</th>
-                            <th>ID Autor</th>
+                            <th>ID do Autor</th>
                             <th>Nome do Autor</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="livroAutorTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section class="list-section">
-            <h2>Livros</h2>
-            <div class="table-container">
-                <table id="livrosTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Título</th>
-                            <th>ISBN</th>
-                            <th>Ano Publicação</th>
-                            <th>Páginas</th>
-                            <th>ID Editora</th>
-                        </tr>
-                    </thead>
-                    <tbody id="livrosTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
-                    </tbody>
-                </table>
-            </div>
-        </section>
-
-        <section class="list-section">
-            <h2>Autores</h2>
-            <div class="table-container">
-                <table id="autoresTable">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Nome</th>
-                        </tr>
-                    </thead>
-                    <tbody id="autoresTableBody">
                         <!-- Dados serão carregados dinamicamente -->
                     </tbody>
                 </table>

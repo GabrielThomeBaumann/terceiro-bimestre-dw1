@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CRUD - Empréstimos Unificados</title>
+    <link rel="stylesheet" href="/emprestimoUnificado/emprestimoUnificado.css" />
+</head>
+
+<body>
+    <header>
+        <h1>CRUD Empréstimos e Livros Associados</h1>
+    </header>
+
+    <main>
+        <section class="form-section">
+            <h2>Cadastro de Empréstimo</h2>
+
+            <form id="emprestimoUnificadoForm">
+                <div class="search-container">
+                    <label for="searchId">Buscar por ID do Empréstimo:</label>
+                    <div class="search-input-group">
+                        <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
+                        <button type="button" id="btnBuscar">🔍 Buscar</button>
+                        <button type="button" id="btnIncluir" class="btn-primary">Incluir Novo</button>
+                        <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
+                        <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
+                        <button type="button" id="btnSalvar" class="btn-save" style="display: none;">Salvar</button>
+                        <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
+                    </div>
+                </div>
+
+                <fieldset id="formFields">
+                    <legend>Dados do Empréstimo</legend>
+
+                    <div class="form-group">
+                        <label for="usuario_id">ID do Usuário:</label>
+                        <input type="number" id="usuario_id" name="usuario_id" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_emprestimo">Data do Empréstimo:</label>
+                        <input type="date" id="data_emprestimo" name="data_emprestimo" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_devolucao_prevista">Data de Devolução Prevista:</label>
+                        <input type="date" id="data_devolucao_prevista" name="data_devolucao_prevista" required />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data_devolucao_real">Data de Devolução Realizada:</label>
+                        <input type="date" id="data_devolucao_real" name="data_devolucao_real" />
+                    </div>
+
+                    <div class="form-group">
+                        <label for="status">Status:</label>
+                        <select id="status" name="status">
+                            <option value="ativo">Ativo</option>
+                            <option value="devolvido">Devolvido</option>
+                            <option value="atrasado">Atrasado</option>
+                        </select>
+                    </div>
+                </fieldset>
+
+                <fieldset id="livrosAssociadosFields">
+                    <legend>Livros Associados</legend>
+                    <div class="livros-search-container">
+                        <label for="livroSelect">Adicionar Livro:</label>
+                        <div class="livro-add-group">
+                            <select id="livroSelect">
+                                <option value="">Selecione um livro</option>
+                            </select>
+                            <input type="date" id="livroDataDevolucaoPrevista" placeholder="Dev. Prevista" />
+                            <button type="button" id="btnAddLivro">Adicionar</button>
+                        </div>
+                    </div>
+
+                    <div class="livros-list-container">
+                        <h3>Livros neste Empréstimo:</h3>
+                        <ul id="listaLivrosAssociados">
+                            <!-- Livros associados serão adicionados aqui -->
+                        </ul>
+                    </div>
+                </fieldset>
+            </form>
+        </section>
+
+        <section class="list-section">
+            <h2>Lista de Empréstimos</h2>
+            <div class="table-container">
+                <table id="emprestimosTable">
+                    <thead>
+                        <tr>
+                            <th>ID Empréstimo</th>
+                            <th>ID Usuário</th>
+                            <th>Data Empréstimo</th>
+                            <th>Dev. Prevista</th>
+                            <th>Dev. Realizada</th>
+                            <th>Status</th>
+                            <th>Livros Associados</th>
+                        </tr>
+                    </thead>
+                    <tbody id="emprestimosTableBody">
+                        <!-- Dados serão carregados dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2025 CRUD Empréstimos Unificados</p>
+    </footer>
+
+    <div id="messageContainer" class="message-container"></div>
+
+    <script src="/emprestimoUnificado/emprestimoUnificado.js" defer></script>
+</body>
+
+</html>

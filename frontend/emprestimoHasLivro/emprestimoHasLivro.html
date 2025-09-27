@@ -15,13 +15,17 @@
 
     <main>
         <section class="form-section">
-            <h2>Cadastro de Empréstimo Has Livro</h2>
+            <h2>Cadastro de Associação Empréstimo-Livro</h2>
 
             <form id="emprestimoHasLivroForm">
                 <div class="search-container">
-                    <label for="searchId">Buscar por ID:</label>
-                    <div class="search-input-group">
-                        <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
+                    <label for="searchEmprestimoId">Buscar por ID do Empréstimo:</label>
+                    <input type="number" id="searchEmprestimoId" placeholder="ID do Empréstimo" />
+
+                    <label for="searchLivroId">Buscar por ID do Livro:</label>
+                    <input type="number" id="searchLivroId" placeholder="ID do Livro" />
+
+                    <div class="button-group">
                         <button type="button" id="btnBuscar">🔍 Buscar</button>
                         <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
                         <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
@@ -32,7 +36,7 @@
                 </div>
 
                 <fieldset id="formFields">
-                    <legend>Dados do Empréstimo Has Livro</legend>
+                    <legend>Dados da Associação</legend>
 
                     <div class="form-group">
                         <label for="emprestimo_id">ID do Empréstimo:</label>
@@ -44,20 +48,30 @@
                         <input type="number" id="livro_id" name="livro_id" required />
                     </div>
 
-                    <!-- Removidos os campos data_devolucao_prevista e data_devolucao_real -->
+                    <div class="form-group">
+                        <label for="data_devolucao_prevista">Data de Devolução Prevista:</label>
+                        <input type="date" id="data_devolucao_prevista" name="data_devolucao_prevista" required />
+                    </div>
 
+                    <div class="form-group">
+                        <label for="data_devolucao_realizada">Data de Devolução Realizada:</label>
+                        <input type="date" id="data_devolucao_realizada" name="data_devolucao_realizada" />
+                    </div>
                 </fieldset>
             </form>
         </section>
 
         <section class="list-section">
+            <h2>Lista de Associações Empréstimo-Livro</h2>
             <div class="table-container">
                 <table id="emprestimoHasLivroTable">
                     <thead>
                         <tr>
-                            <th>ID</th>
-                            <th>ID do Empréstimo</th>
-                            <th>ID do Livro</th>
+                            <th>ID Empréstimo</th>
+                            <th>ID Livro</th>
+                            <th>Data Devolução Prevista</th>
+                            <th>Data Devolução Realizada</th>
+                            <th>Ações</th>
                         </tr>
                     </thead>
                     <tbody id="emprestimoHasLivroTableBody">
