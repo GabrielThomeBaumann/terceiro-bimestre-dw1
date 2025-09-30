@@ -10,19 +10,21 @@
 
 <body>
     <header>
-        <h1>CRUD Empréstimos e Livros Associados</h1>
+        <h1>CRUD Empréstimos Unificados</h1>
     </header>
 
     <main>
         <section class="form-section">
-            <h2>Cadastro de Empréstimo</h2>
+            <h2>Gerenciar Empréstimo</h2>
 
             <form id="emprestimoUnificadoForm">
                 <div class="search-container">
-                    <label for="searchId">Buscar por ID do Empréstimo:</label>
+                    <label for="searchId">Buscar Empréstimo por ID:</label>
                     <div class="search-input-group">
                         <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
                         <button type="button" id="btnBuscar">🔍 Buscar</button>
+                    </div>
+                    <div class="button-group">
                         <button type="button" id="btnIncluir" class="btn-primary">Incluir Novo</button>
                         <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
                         <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
@@ -64,46 +66,62 @@
                     </div>
                 </fieldset>
 
-                <fieldset id="livrosAssociadosFields">
-                    <legend>Livros Associados</legend>
-                    <div class="livros-search-container">
-                        <label for="livroSelect">Adicionar Livro:</label>
-                        <div class="livro-add-group">
-                            <select id="livroSelect">
-                                <option value="">Selecione um livro</option>
-                            </select>
-                            <input type="date" id="livroDataDevolucaoPrevista" placeholder="Dev. Prevista" />
-                            <button type="button" id="btnAddLivro">Adicionar</button>
+                <div class="books-management">
+                    <div class="available-books">
+                        <h3>Livros Disponíveis</h3>
+                        <div class="table-container">
+                            <table id="availableBooksTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="availableBooksTableBody">
+                                    <!-- Livros disponíveis serão carregados aqui -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
-                    <div class="livros-list-container">
-                        <h3>Livros neste Empréstimo:</h3>
-                        <ul id="listaLivrosAssociados">
-                            <!-- Livros associados serão adicionados aqui -->
-                        </ul>
+                    <div class="associated-books">
+                        <h3>Livros Associados a Este Empréstimo</h3>
+                        <div class="table-container">
+                            <table id="associatedBooksTable">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Título</th>
+                                        <th>Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="associatedBooksTableBody">
+                                    <!-- Livros associados serão carregados aqui -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </fieldset>
+                </div>
             </form>
         </section>
 
         <section class="list-section">
-            <h2>Lista de Empréstimos</h2>
+            <h2>Todos os Empréstimos</h2>
             <div class="table-container">
-                <table id="emprestimosTable">
+                <table id="allEmprestimosTable">
                     <thead>
                         <tr>
                             <th>ID Empréstimo</th>
                             <th>ID Usuário</th>
                             <th>Data Empréstimo</th>
-                            <th>Dev. Prevista</th>
-                            <th>Dev. Realizada</th>
+                            <th>Data Prevista</th>
                             <th>Status</th>
                             <th>Livros Associados</th>
                         </tr>
                     </thead>
-                    <tbody id="emprestimosTableBody">
-                        <!-- Dados serão carregados dinamicamente -->
+                    <tbody id="allEmprestimosTableBody">
+                        <!-- Todos os empréstimos unificados serão carregados aqui -->
                     </tbody>
                 </table>
             </div>

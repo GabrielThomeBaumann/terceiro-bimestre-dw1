@@ -6,7 +6,7 @@ exports.abrirCrudEmprestimoUnificado = (req, res) => {
   res.sendFile(path.join(__dirname, '../../frontend/emprestimoUnificado/emprestimoUnificado.html'));
 };
 
-// Listar todos os empréstimos com seus livros associados
+// Listar todos os empréstimos com seus livros associados (usando datas da tabela principal)
 exports.listarEmprestimosUnificados = async (req, res) => {
   try {
     const result = await query(`
@@ -20,11 +20,9 @@ exports.listarEmprestimosUnificados = async (req, res) => {
         json_agg(
           json_build_object(
             'livro_id', l.livro_id,
-            'titulo', l.titulo,
-            'data_devolucao_prevista_livro', ehl.data_devolucao_prevista,
-            'data_devolucao_realizada_livro', ehl.data_devolucao_realizada
+            'titulo', l.titulo
           )
-        ) AS livros_associados
+        ) FILTER (WHERE l.livro_id IS NOT NULL) AS livros_associados
       FROM emprestimos e
       LEFT JOIN emprestimo_has_livro ehl ON e.emprestimo_id = ehl.emprestimo_id
       LEFT JOIN livros l ON ehl.livro_id = l.livro_id
@@ -38,10 +36,10 @@ exports.listarEmprestimosUnificados = async (req, res) => {
   }
 };
 
-// Criar um novo empréstimo e suas associações com livros
+// Criar um novo empréstimo e suas associações com livros (sem datas específicas por livro)
 exports.criarEmprestimoUnificado = async (req, res) => {
   console.log('Criando empréstimo unificado com dados:', req.body);
-  const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status, livros } = req.body;
+  const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status, livro_ids } = req.body;
 
   // Validação básica do empréstimo
   if (!usuario_id || !data_emprestimo || !data_devolucao_prevista) {
@@ -59,15 +57,15 @@ exports.criarEmprestimoUnificado = async (req, res) => {
       );
       const emprestimo = emprestimoResult.rows[0];
 
-      // 2. Associar os livros, se houver
-      if (livros && livros.length > 0) {
-        for (const livro of livros) {
-          if (!livro.livro_id || !livro.data_devolucao_prevista_livro) {
-            throw new Error('ID do livro e data de devolução prevista são obrigatórios para cada livro associado.');
+      // 2. Associar os livros, se houver (apenas IDs, sem datas específicas)
+      if (livro_ids && livro_ids.length > 0) {
+        for (const livro_id of livro_ids) {
+          if (!livro_id) {
+            throw new Error('ID do livro é obrigatório para cada livro associado.');
           }
           await client.query(
-            'INSERT INTO emprestimo_has_livro (emprestimo_id, livro_id, data_devolucao_prevista) VALUES ($1, $2, $3)',
-            [emprestimo.emprestimo_id, livro.livro_id, livro.data_devolucao_prevista_livro]
+            'INSERT INTO emprestimo_has_livro (emprestimo_id, livro_id) VALUES ($1, $2)',
+            [emprestimo.emprestimo_id, livro_id]
           );
         }
       }
@@ -108,11 +106,9 @@ exports.obterEmprestimoUnificado = async (req, res) => {
         json_agg(
           json_build_object(
             'livro_id', l.livro_id,
-            'titulo', l.titulo,
-            'data_devolucao_prevista_livro', ehl.data_devolucao_prevista,
-            'data_devolucao_realizada_livro', ehl.data_devolucao_realizada
+            'titulo', l.titulo
           )
-        ) AS livros_associados
+        ) FILTER (WHERE l.livro_id IS NOT NULL) AS livros_associados
       FROM emprestimos e
       LEFT JOIN emprestimo_has_livro ehl ON e.emprestimo_id = ehl.emprestimo_id
       LEFT JOIN livros l ON ehl.livro_id = l.livro_id
@@ -124,10 +120,9 @@ exports.obterEmprestimoUnificado = async (req, res) => {
       return res.status(404).json({ error: 'Empréstimo não encontrado' });
     }
 
-    // Se não houver livros associados, json_agg retorna um array com um objeto nulo.
-    // Ajustamos isso para retornar um array vazio.
     const emprestimo = result.rows[0];
-    if (emprestimo.livros_associados && emprestimo.livros_associados.length === 1 && emprestimo.livros_associados[0].livro_id === null) {
+    // Se não houver livros, garantir array vazio
+    if (!emprestimo.livros_associados || emprestimo.livros_associados.length === 0) {
       emprestimo.livros_associados = [];
     }
 
@@ -142,7 +137,7 @@ exports.obterEmprestimoUnificado = async (req, res) => {
 exports.atualizarEmprestimoUnificado = async (req, res) => {
   console.log('Atualizando empréstimo unificado com ID:', req.params.id, 'e dados:', req.body);
   const id = parseInt(req.params.id);
-  const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status, livros } = req.body;
+  const { usuario_id, data_emprestimo, data_devolucao_prevista, data_devolucao_real, status, livro_ids } = req.body;
 
   if (isNaN(id)) {
     return res.status(400).json({ error: 'ID deve ser um número válido' });
@@ -181,19 +176,17 @@ exports.atualizarEmprestimoUnificado = async (req, res) => {
       );
       const emprestimo = emprestimoUpdateResult.rows[0];
 
-      // 3. Atualizar as associações de livros
-      // Primeiro, remove todas as associações existentes para este empréstimo
+      // 3. Atualizar as associações de livros (remover antigas e adicionar novas)
       await client.query('DELETE FROM emprestimo_has_livro WHERE emprestimo_id = $1', [id]);
 
-      // Em seguida, insere as novas associações
-      if (livros && livros.length > 0) {
-        for (const livro of livros) {
-          if (!livro.livro_id || !livro.data_devolucao_prevista_livro) {
-            throw new Error('ID do livro e data de devolução prevista são obrigatórios para cada livro associado.');
+      if (livro_ids && livro_ids.length > 0) {
+        for (const livro_id of livro_ids) {
+          if (!livro_id) {
+            throw new Error('ID do livro é obrigatório para cada livro associado.');
           }
           await client.query(
-            'INSERT INTO emprestimo_has_livro (emprestimo_id, livro_id, data_devolucao_prevista, data_devolucao_realizada) VALUES ($1, $2, $3, $4)',
-            [emprestimo.emprestimo_id, livro.livro_id, livro.data_devolucao_prevista_livro, livro.data_devolucao_realizada_livro || null]
+            'INSERT INTO emprestimo_has_livro (emprestimo_id, livro_id) VALUES ($1, $2)',
+            [emprestimo.emprestimo_id, livro_id]
           );
         }
       }
@@ -237,7 +230,7 @@ exports.deletarEmprestimoUnificado = async (req, res) => {
         throw new Error('Empréstimo não encontrado');
       }
 
-      // 2. Deletar as associações de livros (se houver CASCADE na FK, isso é automático)
+      // 2. Deletar as associações de livros
       await client.query('DELETE FROM emprestimo_has_livro WHERE emprestimo_id = $1', [id]);
 
       // 3. Deletar o empréstimo principal

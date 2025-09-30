@@ -55,7 +55,7 @@ section h2 {
 }
 
 /* Form styles */
-.search-container, .livros-search-container {
+.search-container {
     background: #f0fff0;
     padding: 1.5rem;
     border-radius: 8px;
@@ -63,47 +63,28 @@ section h2 {
     border: 2px solid #2d4a2d;
 }
 
-.search-container label, .livros-search-container label {
+.search-container label {
     display: block;
     margin-bottom: 0.5rem;
     font-weight: 600;
     color: #2d4a2d;
 }
 
-.search-input-group, .livro-add-group {
+.search-input-group input,
+.search-input-group button {
+    height: 42px;
+}
+
+.search-input-group {
     display: flex;
     gap: 1rem;
     align-items: center;
-    flex-wrap: wrap; /* Permite quebrar linha em telas menores */
-}
-
-.search-input-group input,
-.search-input-group button,
-.livro-add-group input,
-.livro-add-group select,
-.livro-add-group button {
-    height: 42px;
-    padding: 0.8rem;
-    border: 2px solid #c0e0c0;
-    border-radius: 6px;
-    font-size: 1rem;
-    transition: all 0.3s ease;
-    background: white;
+    margin-bottom: 1rem; /* Adicionado para espaçamento */
 }
 
 .search-input-group input {
     flex: 1;
     max-width: 200px;
-}
-
-.livro-add-group select {
-    flex: 2; /* Ocupa mais espaço */
-    min-width: 150px;
-}
-
-.livro-add-group input[type="date"] {
-    flex: 1;
-    min-width: 120px;
 }
 
 fieldset {
@@ -144,9 +125,7 @@ fieldset legend {
 }
 
 .form-group input:focus,
-.form-group select:focus,
-.livro-add-group input:focus,
-.livro-add-group select:focus {
+.form-group select:focus {
     outline: none;
     border-color: aquamarine;
     box-shadow: 0 0 0 3px rgba(127, 255, 212, 0.3);
@@ -374,12 +353,12 @@ footer {
         font-size: 2rem;
     }
 
-    .search-input-group, .livro-add-group {
+    .search-input-group {
         flex-direction: column;
         align-items: stretch;
     }
 
-    .search-input-group input, .livro-add-group input, .livro-add-group select {
+    .search-input-group input {
         max-width: none;
         margin-bottom: 0.5rem;
     }
@@ -406,6 +385,10 @@ footer {
         right: 10px;
         left: 10px;
     }
+
+    .books-management {
+        flex-direction: column;
+    }
 }
 
 @media (max-width: 480px) {
@@ -419,63 +402,63 @@ footer {
     }
 }
 
-/* Estilos para a lista de livros associados */
-.livros-list-container {
-    margin-top: 1.5rem;
-    border-top: 1px solid #e0f2e0;
-    padding-top: 1rem;
-}
-
-#listaLivrosAssociados {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-#listaLivrosAssociados li {
-    background-color: #f9fcf9;
-    border: 1px solid #e0f2e0;
-    border-radius: 4px;
-    padding: 0.7rem 1rem;
-    margin-bottom: 0.5rem;
+/* Estilos para as tabelas de gerenciamento de livros */
+.books-management {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.95rem;
+    gap: 2rem;
+    margin-top: 2rem;
 }
 
-#listaLivrosAssociados li span {
-    flex-grow: 1;
-    margin-right: 10px;
+.available-books,
+.associated-books {
+    flex: 1;
+    border: 1px solid #6fa06f;
+    border-radius: 8px;
+    padding: 1rem;
+    background: #fafffe;
 }
 
-#listaLivrosAssociados li .remove-livro-btn {
-    background-color: #dc3545;
-    color: white;
-    border: none;
-    padding: 0.3rem 0.6rem;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-    transition: background-color 0.2s ease;
-}
-
-#listaLivrosAssociados li .remove-livro-btn:hover {
-    background-color: #c82333;
-}
-
-.livro-info {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-}
-
-.livro-info .titulo {
-    font-weight: bold;
+.available-books h3,
+.associated-books h3 {
     color: #2d4a2d;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    border-bottom: 1px solid aquamarine;
+    padding-bottom: 0.5rem;
 }
 
-.livro-info .datas {
-    font-size: 0.85em;
-    color: #5a8a5a;
+.books-management table th:last-child,
+.books-management table td:last-child {
+    text-align: center; /* Centraliza o botão de ação */
+    width: 80px; /* Largura fixa para a coluna de ação */
+}
+
+.books-management .btn-add,
+.books-management .btn-remove {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+    min-width: auto;
+    border-radius: 4px;
+}
+
+.books-management .btn-add {
+    background: #28a745; /* Verde */
+    color: white;
+    border-color: #28a745;
+}
+
+.books-management .btn-add:hover {
+    background: #218838;
+    border-color: #1e7e34;
+}
+
+.books-management .btn-remove {
+    background: #dc3545; /* Vermelho */
+    color: white;
+    border-color: #dc3545;
+}
+
+.books-management .btn-remove:hover {
+    background: #c82333;
+    border-color: #bd2130;
 }

@@ -79,6 +79,7 @@ const emprestimoHasLivroRoutes = require('./routes/emprestimoHasLivroRoutes');
 const emprestimoRoutes = require('./routes/emprestimoRoutes');
 const usuariosRoutes = require('./routes/usuariosRoutes');
 const perfisRoutes = require('./routes/perfisRoutes');
+const emprestimoUnificadoRoutes = require('./routes/emprestimoUnificadoRoutes'); // NOVA ROTA
 
 // Usando as rotas
 app.use('/login', loginRoutes);
@@ -98,6 +99,7 @@ app.use('/emprestimohaslivro', emprestimoHasLivroRoutes);
 app.use('/emprestimo', emprestimoRoutes);
 app.use('/usuarios', usuariosRoutes);
 app.use('/perfis', perfisRoutes);
+app.use('/emprestimoUnificado', emprestimoUnificadoRoutes); // USANDO A NOVA ROTA
 
 // Rota padrão
 app.get('/', (req, res) => {
@@ -215,5 +217,3 @@ process.on('SIGTERM', async () => {
 
 // Iniciar o servidor
 startServer();
-
-

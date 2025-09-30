@@ -1,8 +1,4 @@
 const API_BASE_URL = 'http://localhost:3001';
-let currentEmprestimoId = null;
-let operacao = null;
-let todosLivrosDisponiveis = []; // Armazena todos os livros para o select
-let livrosAssociados = []; // Armazena os livros atualmente associados ao empréstimo no formulário
 
 // Elementos do DOM
 const form = document.getElementById('emprestimoUnificadoForm');
@@ -13,40 +9,43 @@ const btnAlterar = document.getElementById('btnAlterar');
 const btnExcluir = document.getElementById('btnExcluir');
 const btnCancelar = document.getElementById('btnCancelar');
 const btnSalvar = document.getElementById('btnSalvar');
-const emprestimosTableBody = document.getElementById('emprestimosTableBody');
 const messageContainer = document.getElementById('messageContainer');
 
-// Campos do formulário de empréstimo
+// Campos do formulário principal
 const usuarioIdInput = document.getElementById('usuario_id');
 const dataEmprestimoInput = document.getElementById('data_emprestimo');
 const dataDevolucaoPrevistaInput = document.getElementById('data_devolucao_prevista');
 const dataDevolucaoRealInput = document.getElementById('data_devolucao_real');
 const statusInput = document.getElementById('status');
 
-// Campos e lista de livros associados
-const livroSelect = document.getElementById('livroSelect');
-const livroDataDevolucaoPrevistaInput = document.getElementById('livroDataDevolucaoPrevista');
-const btnAddLivro = document.getElementById('btnAddLivro');
-const listaLivrosAssociados = document.getElementById('listaLivrosAssociados');
+// Tabelas de livros
+const availableBooksTableBody = document.getElementById('availableBooksTableBody');
+const associatedBooksTableBody = document.getElementById('associatedBooksTableBody');
+const allEmprestimosTableBody = document.getElementById('allEmprestimosTableBody');
+
+let currentEmprestimoId = null;
+let operacao = null; // 'incluir', 'alterar', 'excluir'
+let associatedBookIds = new Set(); // Para controlar os IDs dos livros associados
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', () => {
-    carregarEmprestimos();
-    carregarTodosLivros();
+    carregarTodosEmprestimos();
+    carregarTodosLivrosDisponiveis();
     limparFormulario();
-    mostrarBotoes(true, false, false, false, false, false);
-    bloquearCamposEmprestimo(false);
-    bloquearCamposLivrosAssociados(true); // Começa bloqueado
+    mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
+    bloquearCamposFormulario(false); // Libera o campo de busca, bloqueia os outros
+    bloquearGerenciamentoLivros(true); // Bloqueia as tabelas de livros inicialmente
 });
 
 // Event Listeners
-btnBuscar.addEventListener('click', buscarEmprestimo);
-btnIncluir.addEventListener('click', incluirEmprestimo);
-btnAlterar.addEventListener('click', alterarEmprestimo);
-btnExcluir.addEventListener('click', excluirEmprestimo);
+btnBuscar.addEventListener('click', buscarEmprestimoUnificado);
+btnIncluir.addEventListener('click', incluirEmprestimoUnificado);
+btnAlterar.addEventListener('click', alterarEmprestimoUnificado);
+btnExcluir.addEventListener('click', excluirEmprestimoUnificado);
 btnCancelar.addEventListener('click', cancelarOperacao);
 btnSalvar.addEventListener('click', salvarOperacao);
-btnAddLivro.addEventListener('click', adicionarLivroAoEmprestimo);
+
+// --- Funções de UI ---
 
 function mostrarMensagem(texto, tipo = 'info') {
     messageContainer.innerHTML = `<div class="message ${tipo}">${texto}</div>`;
@@ -55,30 +54,31 @@ function mostrarMensagem(texto, tipo = 'info') {
     }, 3000);
 }
 
-function bloquearCamposEmprestimo(bloquear) {
-    searchId.disabled = bloquear;
-    usuarioIdInput.disabled = !bloquear;
-    dataEmprestimoInput.disabled = !bloquear;
-    dataDevolucaoPrevistaInput.disabled = !bloquear;
-    dataDevolucaoRealInput.disabled = !bloquear;
-    statusInput.disabled = !bloquear;
+function bloquearCamposFormulario(bloquear) {
+    // searchId.disabled = bloquear; // O campo de busca deve ser controlado separadamente
+    usuarioIdInput.disabled = bloquear;
+    dataEmprestimoInput.disabled = bloquear;
+    dataDevolucaoPrevistaInput.disabled = bloquear;
+    dataDevolucaoRealInput.disabled = bloquear;
+    statusInput.disabled = bloquear;
 }
 
-function bloquearCamposLivrosAssociados(bloquear) {
-    livroSelect.disabled = bloquear;
-    livroDataDevolucaoPrevistaInput.disabled = bloquear;
-    btnAddLivro.disabled = bloquear;
-    // Os botões de remover livros individuais são controlados dinamicamente
+function bloquearGerenciamentoLivros(bloquear) {
+    // Bloqueia/desbloqueia as tabelas de livros
+    availableBooksTableBody.querySelectorAll('button').forEach(btn => btn.disabled = bloquear);
+    associatedBooksTableBody.querySelectorAll('button').forEach(btn => btn.disabled = bloquear);
 }
 
 function limparFormulario() {
     form.reset();
     searchId.value = '';
     currentEmprestimoId = null;
-    livrosAssociados = [];
-    renderizarLivrosAssociados();
-    bloquearCamposEmprestimo(false);
-    bloquearCamposLivrosAssociados(true);
+    operacao = null;
+    associatedBookIds.clear();
+    renderizarLivrosAssociados([]); // Limpa a lista de livros associados
+    carregarTodosLivrosDisponiveis(); // Recarrega os livros disponíveis
+    bloquearCamposFormulario(true); // Bloqueia os campos do formulário
+    bloquearGerenciamentoLivros(true); // Bloqueia as tabelas de livros
 }
 
 function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCancelar) {
@@ -90,109 +90,161 @@ function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCa
     btnCancelar.style.display = btCancelar ? 'inline-block' : 'none';
 }
 
-async function carregarTodosLivros() {
+function formatarDataParaInput(dataString) {
+    if (!dataString) return '';
+    return new Date(dataString).toISOString().split('T')[0];
+}
+
+// --- Funções de Carregamento de Dados ---
+
+async function carregarTodosEmprestimos() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/emprestimoUnificado`);
+        if (!response.ok) throw new Error('Erro ao carregar empréstimos unificados');
+        const emprestimos = await response.json();
+        renderizarTodosEmprestimos(emprestimos);
+    } catch (error) {
+        console.error('Erro ao carregar todos os empréstimos:', error);
+        mostrarMensagem('Erro ao carregar lista de empréstimos', 'error');
+    }
+}
+
+function renderizarTodosEmprestimos(emprestimos) {
+    allEmprestimosTableBody.innerHTML = '';
+    emprestimos.forEach(emp => {
+        const tr = document.createElement('tr');
+        const livros = emp.livros_associados ? emp.livros_associados.map(l => l.titulo).join(', ') : 'Nenhum';
+        tr.innerHTML = `
+            <td><button class="btn-id" onclick="selecionarEmprestimoUnificado(${emp.emprestimo_id})">${emp.emprestimo_id}</button></td>
+            <td>${emp.usuario_id}</td>
+            <td>${formatarDataParaInput(emp.data_emprestimo)}</td>
+            <td>${formatarDataParaInput(emp.data_devolucao_prevista)}</td>
+            <td>${emp.status}</td>
+            <td>${livros}</td>
+        `;
+        allEmprestimosTableBody.appendChild(tr);
+    });
+}
+
+async function carregarTodosLivrosDisponiveis() {
     try {
         const response = await fetch(`${API_BASE_URL}/emprestimoUnificado/livros/todos`);
-        if (!response.ok) throw new Error('Erro ao carregar livros');
-        todosLivrosDisponiveis = await response.json();
-
-        livroSelect.innerHTML = '<option value="">Selecione um livro</option>';
-        todosLivrosDisponiveis.forEach(livro => {
-            const option = document.createElement('option');
-            option.value = livro.livro_id;
-            option.textContent = `${livro.titulo} (ID: ${livro.livro_id})`;
-            livroSelect.appendChild(option);
-        });
+        if (!response.ok) throw new Error('Erro ao carregar livros disponíveis');
+        const livros = await response.json();
+        renderizarLivrosDisponiveis(livros);
     } catch (error) {
-        console.error('Erro ao carregar todos os livros:', error);
-        mostrarMensagem('Erro ao carregar lista de livros', 'error');
+        console.error('Erro ao carregar livros disponíveis:', error);
+        mostrarMensagem('Erro ao carregar livros disponíveis', 'error');
     }
 }
 
-function renderizarLivrosAssociados() {
-    listaLivrosAssociados.innerHTML = '';
-    livrosAssociados.forEach(livro => {
-        const li = document.createElement('li');
-        li.setAttribute('data-livro-id', livro.livro_id);
-        li.innerHTML = `
-            <div class="livro-info">
-                <span class="titulo">${livro.titulo} (ID: ${livro.livro_id})</span>
-                <span class="datas">Dev. Prevista: ${livro.data_devolucao_prevista_livro || 'N/A'} | Dev. Realizada: ${livro.data_devolucao_realizada_livro || 'N/A'}</span>
-            </div>
-            <button type="button" class="remove-livro-btn" data-livro-id="${livro.livro_id}">Remover</button>
+function renderizarLivrosDisponiveis(livros) {
+    availableBooksTableBody.innerHTML = '';
+    livros.forEach(livro => {
+        // Só adiciona se o livro não estiver já associado
+        if (!associatedBookIds.has(livro.livro_id)) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${livro.livro_id}</td>
+                <td>${livro.titulo}</td>
+                <td><button class="btn-add btn-small" onclick="adicionarLivro(${livro.livro_id}, '${livro.titulo}')" ${operacao === null ? 'disabled' : ''}>Adicionar</button></td>
+            `;
+            availableBooksTableBody.appendChild(tr);
+        }
+    });
+}
+
+function renderizarLivrosAssociados(livros) {
+    associatedBooksTableBody.innerHTML = '';
+    associatedBookIds.clear(); // Limpa o set antes de preencher
+    livros.forEach(livro => {
+        associatedBookIds.add(livro.livro_id); // Adiciona ao set
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${livro.livro_id}</td>
+            <td>${livro.titulo}</td>
+            <td><button class="btn-remove btn-small" onclick="removerLivro(${livro.livro_id}, '${livro.titulo}')" ${operacao === null ? 'disabled' : ''}>Remover</button></td>
         `;
-        listaLivrosAssociados.appendChild(li);
+        associatedBooksTableBody.appendChild(tr);
     });
-
-    document.querySelectorAll('.remove-livro-btn').forEach(button => {
-        button.addEventListener('click', (event) => {
-            const livroIdToRemove = parseInt(event.target.dataset.livroId);
-            livrosAssociados = livrosAssociados.filter(l => l.livro_id !== livroIdToRemove);
-            renderizarLivrosAssociados();
-        });
-    });
+    // Após renderizar os associados, atualiza os disponíveis para remover os já associados
+    carregarTodosLivrosDisponiveis();
 }
 
-function adicionarLivroAoEmprestimo() {
-    const selectedLivroId = parseInt(livroSelect.value);
-    const dataDevolucaoPrevista = livroDataDevolucaoPrevistaInput.value;
+// --- Funções de Gerenciamento de Livros (Adicionar/Remover) ---
 
-    if (isNaN(selectedLivroId) || !dataDevolucaoPrevista) {
-        mostrarMensagem('Selecione um livro e informe a data de devolução prevista.', 'warning');
+function adicionarLivro(livro_id, titulo) {
+    if (associatedBookIds.has(livro_id)) {
+        mostrarMensagem('Este livro já está associado.', 'warning');
         return;
     }
-
-    const livroExistente = livrosAssociados.find(l => l.livro_id === selectedLivroId);
-    if (livroExistente) {
-        mostrarMensagem('Este livro já foi adicionado ao empréstimo.', 'warning');
-        return;
-    }
-
-    const livroInfo = todosLivrosDisponiveis.find(l => l.livro_id === selectedLivroId);
-    if (livroInfo) {
-        livrosAssociados.push({
-            livro_id: selectedLivroId,
-            titulo: livroInfo.titulo,
-            data_devolucao_prevista_livro: dataDevolucaoPrevista,
-            data_devolucao_realizada_livro: null // Inicialmente nulo
-        });
-        renderizarLivrosAssociados();
-        livroSelect.value = '';
-        livroDataDevolucaoPrevistaInput.value = '';
+    associatedBookIds.add(livro_id);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${livro_id}</td>
+        <td>${titulo}</td>
+        <td><button class="btn-remove btn-small" onclick="removerLivro(${livro_id}, '${titulo}')" ${operacao === null ? 'disabled' : ''}>Remover</button></td>
+    `;
+    associatedBooksTableBody.appendChild(tr);
+    // Remove o livro da lista de disponíveis
+    const availableRow = availableBooksTableBody.querySelector(`tr button[onclick*="adicionarLivro(${livro_id}"]`).closest('tr');
+    if (availableRow) {
+        availableRow.remove();
     }
 }
 
-async function buscarEmprestimo() {
+function removerLivro(livro_id, titulo) {
+    if (!associatedBookIds.has(livro_id)) {
+        mostrarMensagem('Este livro não está associado.', 'warning');
+        return;
+    }
+    associatedBookIds.delete(livro_id);
+    // Remove o livro da lista de associados
+    const associatedRow = associatedBooksTableBody.querySelector(`tr button[onclick*="removerLivro(${livro_id}"]`).closest('tr');
+    if (associatedRow) {
+        associatedRow.remove();
+    }
+    // Adiciona o livro de volta à lista de disponíveis
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${livro_id}</td>
+        <td>${titulo}</td>
+        <td><button class="btn-add btn-small" onclick="adicionarLivro(${livro_id}, '${titulo}')" ${operacao === null ? 'disabled' : ''}>Adicionar</button></td>
+    `;
+    availableBooksTableBody.appendChild(tr);
+}
+
+// --- Funções CRUD ---
+
+async function buscarEmprestimoUnificado() {
     const id = searchId.value.trim();
     if (!id) {
         mostrarMensagem('Digite um ID para buscar', 'warning');
         return;
     }
-    limparFormulario();
-    searchId.value = id;
-    searchId.focus();
+
+    limparFormulario(); // Limpa antes de buscar para evitar dados antigos
+    searchId.value = id; // Mantém o ID buscado no campo
+    searchId.disabled = false; // Garante que o campo de busca esteja habilitado
 
     try {
         const response = await fetch(`${API_BASE_URL}/emprestimoUnificado/${id}`);
-
         if (response.ok) {
             const emprestimo = await response.json();
             preencherFormulario(emprestimo);
-            mostrarBotoes(true, false, true, true, false, true);
+            mostrarBotoes(true, false, true, true, false, true); // Buscar, Alterar, Excluir, Cancelar
             mostrarMensagem('Empréstimo encontrado!', 'success');
-            bloquearCamposEmprestimo(true);
-            bloquearCamposLivrosAssociados(false); // Libera para alteração
-            searchId.disabled = false;
+            bloquearCamposFormulario(true); // Bloqueia campos para visualização
+            bloquearGerenciamentoLivros(true); // Bloqueia gerenciamento de livros para visualização
             currentEmprestimoId = emprestimo.emprestimo_id;
 
         } else if (response.status === 404) {
             limparFormulario();
             searchId.value = id;
-            mostrarBotoes(true, true, false, false, false, true);
-            mostrarMensagem('Empréstimo não encontrado. Você pode incluir um novo empréstimo.', 'info');
-            bloquearCamposEmprestimo(false);
-            bloquearCamposLivrosAssociados(false); // Libera para inclusão
-            searchId.disabled = false;
+            mostrarBotoes(true, true, false, false, false, true); // Buscar, Incluir, Cancelar
+            mostrarMensagem('Empréstimo não encontrado. Você pode incluir um novo.', 'info');
+            bloquearCamposFormulario(false); // Libera campos para inclusão
+            bloquearGerenciamentoLivros(false); // Libera gerenciamento de livros
             usuarioIdInput.focus();
         } else {
             throw new Error('Erro ao buscar empréstimo');
@@ -207,61 +259,58 @@ function preencherFormulario(emprestimo) {
     currentEmprestimoId = emprestimo.emprestimo_id;
     searchId.value = emprestimo.emprestimo_id;
     usuarioIdInput.value = emprestimo.usuario_id || '';
-    dataEmprestimoInput.value = emprestimo.data_emprestimo ? emprestimo.data_emprestimo.split('T')[0] : '';
-    dataDevolucaoPrevistaInput.value = emprestimo.data_devolucao_prevista ? emprestimo.data_devolucao_prevista.split('T')[0] : '';
-    dataDevolucaoRealInput.value = emprestimo.data_devolucao_real ? emprestimo.data_devolucao_real.split('T')[0] : '';
+    dataEmprestimoInput.value = formatarDataParaInput(emprestimo.data_emprestimo);
+    dataDevolucaoPrevistaInput.value = formatarDataParaInput(emprestimo.data_devolucao_prevista);
+    dataDevolucaoRealInput.value = formatarDataParaInput(emprestimo.data_devolucao_real);
     statusInput.value = emprestimo.status || 'ativo';
 
-    livrosAssociados = emprestimo.livros_associados || [];
-    renderizarLivrosAssociados();
+    // Preenche os livros associados
+    renderizarLivrosAssociados(emprestimo.livros_associados || []);
 }
 
-function incluirEmprestimo() {
-    mostrarMensagem('Digite os dados para o novo empréstimo e adicione os livros!', 'info');
+function incluirEmprestimoUnificado() {
+    mostrarMensagem('Preencha os dados e associe os livros para o novo empréstimo!', 'info');
     limparFormulario();
-    bloquearCamposEmprestimo(true);
-    bloquearCamposLivrosAssociados(false);
-    searchId.disabled = true;
-    mostrarBotoes(false, false, false, false, true, true);
+    searchId.disabled = true; // Desabilita o campo de busca para inclusão
+    bloquearCamposFormulario(false); // Libera campos do formulário
+    bloquearGerenciamentoLivros(false); // Libera gerenciamento de livros
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     usuarioIdInput.focus();
     operacao = 'incluir';
 }
 
-function alterarEmprestimo() {
+function alterarEmprestimoUnificado() {
     if (!currentEmprestimoId) {
         mostrarMensagem('Selecione um empréstimo para alterar.', 'warning');
         return;
     }
-    mostrarMensagem('Altere os dados do empréstimo e/ou os livros associados e salve!', 'info');
-    bloquearCamposEmprestimo(true);
-    bloquearCamposLivrosAssociados(false);
-    searchId.disabled = true;
+    mostrarMensagem('Altere os dados e/ou livros associados e salve!', 'info');
+    searchId.disabled = true; // Desabilita o campo de busca para alteração
+    bloquearCamposFormulario(false); // Libera campos do formulário
+    bloquearGerenciamentoLivros(false); // Libera gerenciamento de livros
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     usuarioIdInput.focus();
-    mostrarBotoes(false, false, false, false, true, true);
     operacao = 'alterar';
 }
 
-function excluirEmprestimo() {
+function excluirEmprestimoUnificado() {
     if (!currentEmprestimoId) {
         mostrarMensagem('Selecione um empréstimo para excluir.', 'warning');
         return;
     }
-    mostrarMensagem('Confirme a exclusão clicando em Salvar! Todas as associações de livros serão removidas.', 'warning');
-    bloquearCamposEmprestimo(false);
-    bloquearCamposLivrosAssociados(true); // Bloqueia a edição de livros ao excluir
-    searchId.disabled = true;
-    mostrarBotoes(false, false, false, false, true, true);
+    mostrarMensagem('Confirme a exclusão clicando em Salvar!', 'warning');
+    searchId.disabled = true; // Desabilita o campo de busca
+    bloquearCamposFormulario(true); // Bloqueia campos do formulário
+    bloquearGerenciamentoLivros(true); // Bloqueia gerenciamento de livros
+    mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     operacao = 'excluir';
 }
 
 function cancelarOperacao() {
     limparFormulario();
-    mostrarBotoes(true, false, false, false, false, false);
-    bloquearCamposEmprestimo(false);
-    bloquearCamposLivrosAssociados(true);
-    searchId.disabled = false;
+    mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
+    searchId.disabled = false; // Libera o campo de busca
     searchId.focus();
-    operacao = null;
     mostrarMensagem('Operação cancelada', 'info');
 }
 
@@ -277,11 +326,7 @@ async function salvarOperacao() {
         data_devolucao_prevista: dataDevolucaoPrevistaInput.value,
         data_devolucao_real: dataDevolucaoRealInput.value || null,
         status: statusInput.value || 'ativo',
-        livros: livrosAssociados.map(livro => ({
-            livro_id: livro.livro_id,
-            data_devolucao_prevista_livro: livro.data_devolucao_prevista_livro,
-            data_devolucao_realizada_livro: livro.data_devolucao_realizada_livro
-        }))
+        livro_ids: Array.from(associatedBookIds) // Envia os IDs dos livros associados
     };
 
     if ((operacao === 'incluir' || operacao === 'alterar') && (!emprestimoData.usuario_id || !emprestimoData.data_emprestimo || !emprestimoData.data_devolucao_prevista)) {
@@ -317,12 +362,9 @@ async function salvarOperacao() {
                 mostrarMensagem(`Empréstimo ${operacao} com sucesso!`, 'success');
             }
             limparFormulario();
-            carregarEmprestimos();
-            mostrarBotoes(true, false, false, false, false, false);
-            bloquearCamposEmprestimo(false);
-            bloquearCamposLivrosAssociados(true);
-            searchId.disabled = false;
-            operacao = null;
+            carregarTodosEmprestimos();
+            mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
+            searchId.disabled = false; // Libera o campo de busca
         } else {
             const errorData = await response.json();
             mostrarMensagem(errorData.error || 'Erro na operação', 'error');
@@ -333,46 +375,8 @@ async function salvarOperacao() {
     }
 }
 
-async function carregarEmprestimos() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/emprestimoUnificado`);
-        if (response.ok) {
-            const emprestimos = await response.json();
-            renderizarTabelaEmprestimos(emprestimos);
-        } else {
-            throw new Error('Erro ao carregar empréstimos');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao carregar lista de empréstimos', 'error');
-    }
-}
-
-function renderizarTabelaEmprestimos(emprestimos) {
-    emprestimosTableBody.innerHTML = '';
-
-    emprestimos.forEach(emprestimo => {
-        const row = document.createElement('tr');
-        const livrosHtml = emprestimo.livros_associados && emprestimo.livros_associados.length > 0 && emprestimo.livros_associados[0].livro_id !== null
-            ? emprestimo.livros_associados.map(l => `${l.titulo} (ID: ${l.livro_id})`).join('<br>')
-            : 'Nenhum livro';
-
-        row.innerHTML = `
-            <td>
-                <button class="btn-id" onclick="selecionarEmprestimo(${emprestimo.emprestimo_id})">${emprestimo.emprestimo_id}</button>
-            </td>
-            <td>${emprestimo.usuario_id}</td>
-            <td>${emprestimo.data_emprestimo ? emprestimo.data_emprestimo.split('T')[0] : ''}</td>
-            <td>${emprestimo.data_devolucao_prevista ? emprestimo.data_devolucao_prevista.split('T')[0] : ''}</td>
-            <td>${emprestimo.data_devolucao_real ? emprestimo.data_devolucao_real.split('T')[0] : ''}</td>
-            <td>${emprestimo.status || ''}</td>
-            <td>${livrosHtml}</td>
-        `;
-        emprestimosTableBody.appendChild(row);
-    });
-}
-
-async function selecionarEmprestimo(id) {
+// Função para selecionar empréstimo da tabela inferior
+async function selecionarEmprestimoUnificado(id) {
     searchId.value = id;
-    await buscarEmprestimo();
+    await buscarEmprestimoUnificado();
 }
