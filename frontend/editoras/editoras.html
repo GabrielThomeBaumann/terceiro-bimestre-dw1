@@ -21,10 +21,7 @@
                 <div class="search-container">
                     <label for="searchId">Buscar por ID:</label>
                     <div class="search-input-group">
-                        <!-- ALTERAÇÃO AQUI: De input para select -->
-                        <select id="searchId" name="searchId">
-                            <option value="">Selecione um ID</option>
-                        </select>
+                        <input type="number" id="searchId" placeholder="Digite o ID para buscar">
                         <button type="button" id="btnBuscar">🔍 Buscar</button>
 
                         <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
@@ -65,8 +62,8 @@
                         <tr>
                             <th>ID</th>
                             <th>Nome</th>
-                            <th>Cidade</th>                          
-                            <th>Ano Fundação</th>                          
+                            <th>Cidade</th>                           
+                            <th>Ano Fundação</th>                           
                         </tr>
                     </thead>
                     <tbody id="editorasTableBody">

@@ -8,4 +8,8 @@ router.post('/', livrosController.criarLivro);
 router.get('/:id', livrosController.obterLivro);
 router.put('/:id', livrosController.atualizarLivro);
 router.delete('/:id', livrosController.deletarLivro);
+
+// Nova rota para listar todos os autores (para preencher selects no frontend)
+router.get('/autores/todos', livrosController.listarTodosAutores);
+
 module.exports = router;

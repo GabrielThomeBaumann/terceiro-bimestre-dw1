@@ -5,7 +5,7 @@ let operacao = null;
 
 // Elementos do DOM
 const form = document.getElementById('editorasForm');
-const searchId = document.getElementById('searchId'); // Agora é um <select>
+const searchId = document.getElementById('searchId'); // Agora é um <input type="number">
 const btnBuscar = document.getElementById('btnBuscar');
 const btnIncluir = document.getElementById('btnIncluir');
 const btnAlterar = document.getElementById('btnAlterar');
@@ -23,10 +23,10 @@ const anoFundacaoEditoraInput = document.getElementById('ano_fundacao_editora');
 // Carregar lista de editoras ao inicializar
 document.addEventListener('DOMContentLoaded', () => {
     carregarEditoras();
-    carregarEditorasNoComboBox(); // Nova função para popular o combobox
     limparFormulario();
-    mostrarBotoes(true, false, false, false, false, false);
-    bloquearCampos(false);
+    mostrarBotoes(true, false, false, false, false, false); // Buscar e Incluir visíveis inicialmente
+    bloquearCampos(true); // Bloqueia campos de dados inicialmente, libera searchId para busca
+    searchId.focus(); // Foco no campo de busca
 });
 
 // Event Listeners
@@ -37,98 +37,143 @@ btnExcluir.addEventListener('click', excluirEditora);
 btnCancelar.addEventListener('click', cancelarOperacao);
 btnSalvar.addEventListener('click', salvarOperacao);
 
-// Adicionar listener para o combobox de busca
-searchId.addEventListener('change', () => {
-    if (searchId.value) {
+// Adicionar listener para Enter no campo de busca
+searchId.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
         buscarEditora();
-    } else {
-        limparFormulario();
-        mostrarBotoes(true, true, false, false, false, false); // Permite incluir se nada estiver selecionado
-        bloquearCampos(false);
     }
 });
 
 // Função para mostrar mensagens
 function mostrarMensagem(texto, tipo = 'info') {
-    messageContainer.innerHTML = `<div class="message ${tipo}">${texto}</div>`;
+    const mensagemDiv = document.createElement('div');
+    mensagemDiv.className = `message ${tipo}`;
+    mensagemDiv.textContent = texto;
+    messageContainer.appendChild(mensagemDiv);
+    
+    // Remove a mensagem após 3 segundos
     setTimeout(() => {
-        messageContainer.innerHTML = '';
+        if (messageContainer.contains(mensagemDiv)) {
+            messageContainer.removeChild(mensagemDiv);
+        }
     }, 3000);
 }
 
-function bloquearCampos(bloquearPrimeiro) {
-    // O combobox de busca (searchId) deve estar sempre habilitado para seleção
-    searchId.disabled = false; 
-    
-    nomeEditoraInput.disabled = !bloquearPrimeiro;
-    cidadeEditoraInput.disabled = !bloquearPrimeiro;
-    anoFundacaoEditoraInput.disabled = !bloquearPrimeiro;
+// Função para controlar o bloqueio/desbloqueio de campos
+// bloquearDados = true: bloqueia campos de dados (nome, cidade, ano), libera searchId
+// bloquearDados = false: libera campos de dados, bloqueia searchId
+function bloquearCampos(bloquearDados) {
+    searchId.disabled = !bloquearDados; // Inverso: quando dados bloqueados, searchId liberado
+    nomeEditoraInput.disabled = bloquearDados;
+    cidadeEditoraInput.disabled = bloquearDados;
+    anoFundacaoEditoraInput.disabled = bloquearDados;
 }
 
-// Função para limpar formulário
+// Função para limpar o formulário
 function limparFormulario() {
     form.reset();
     currentEditoraId = null;
-    // Não resetar o combobox de busca, apenas a seleção
-    searchId.value = ""; 
+    searchId.value = ''; // Limpa o input de busca
 }
 
-function mostrarBotoes(btBuscar, btIncluir, btAlterar, btExcluir, btSalvar, btCancelar) {
-    btnBuscar.style.display = btBuscar ? 'inline-block' : 'none';
-    btnIncluir.style.display = btIncluir ? 'inline-block' : 'none';
-    btnAlterar.style.display = btAlterar ? 'inline-block' : 'none';
-    btnExcluir.style.display = btExcluir ? 'inline-block' : 'none';
-    btnSalvar.style.display = btSalvar ? 'inline-block' : 'none';
-    btnCancelar.style.display = btCancelar ? 'inline-block' : 'none';
+// Função para mostrar/ocultar botões
+function mostrarBotoes(mostrarBuscar, mostrarIncluir, mostrarAlterar, mostrarExcluir, mostrarSalvar, mostrarCancelar) {
+    btnBuscar.style.display = mostrarBuscar ? 'inline-block' : 'none';
+    btnIncluir.style.display = mostrarIncluir ? 'inline-block' : 'none';
+    btnAlterar.style.display = mostrarAlterar ? 'inline-block' : 'none';
+    btnExcluir.style.display = mostrarExcluir ? 'inline-block' : 'none';
+    btnSalvar.style.display = mostrarSalvar ? 'inline-block' : 'none';
+    btnCancelar.style.display = mostrarCancelar ? 'inline-block' : 'none';
 }
 
-// Função para buscar editora por ID
+// Função para carregar todas as editoras na tabela
+async function carregarEditoras() {
+    try {
+        const response = await fetch(`${API_BASE_URL}/editoras`);
+        if (response.ok) {
+            const editoras = await response.json();
+            editorasTableBody.innerHTML = ''; // Limpa a tabela
+
+            editoras.forEach(editora => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${editora.editora_id}</td>
+                    <td>${editora.nome || ''}</td>
+                    <td>${editora.cidade || ''}</td>
+                    <td>${editora.ano_fundacao || ''}</td>
+                `;
+                // Adiciona clique na linha para selecionar
+                row.addEventListener('click', () => selecionarEditora(editora.editora_id));
+                row.style.cursor = 'pointer';
+                editorasTableBody.appendChild(row);
+            });
+        } else {
+            throw new Error(`Erro HTTP: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar editoras:', error);
+        mostrarMensagem('Erro ao carregar lista de editoras', 'error');
+        editorasTableBody.innerHTML = '<tr><td colspan="4">Erro ao carregar dados</td></tr>';
+    }
+}
+
+// Função para buscar uma editora por ID
 async function buscarEditora() {
-    const id = searchId.value; // Pega o valor selecionado no combobox
-    if (!id) {
-        mostrarMensagem('Selecione um ID para buscar', 'warning');
+    const id = searchId.value.trim();
+    if (!id || isNaN(id)) {
+        mostrarMensagem('Digite um ID válido para buscar', 'warning');
         return;
     }
-    
+
     try {
         const response = await fetch(`${API_BASE_URL}/editoras/${id}`);
-
         if (response.ok) {
             const editora = await response.json();
             preencherFormulario(editora);
             mostrarBotoes(true, false, true, true, false, true); // Buscar, Alterar, Excluir, Cancelar
             mostrarMensagem('Editora encontrada!', 'success');
-            bloquearCampos(true); // Bloqueia campos para visualização
+            bloquearCampos(true); // Bloqueia campos de dados para visualização, libera searchId
         } else if (response.status === 404) {
             limparFormulario();
-            searchId.value = id; // Mantém o ID selecionado no combobox
+            searchId.value = id; // Mantém o ID digitado
             mostrarBotoes(true, true, false, false, false, true); // Buscar, Incluir, Cancelar
-            mostrarMensagem('Editora não encontrada.', 'info');
-            bloquearCampos(false); // Libera campos para inclusão
+            mostrarMensagem('Editora não encontrada. Você pode incluir uma nova.', 'info');
+            bloquearCampos(false); // Libera campos de dados para inclusão possível
             nomeEditoraInput.focus();
         } else {
-            throw new Error('Erro ao buscar editora');
+            throw new Error(`Erro HTTP: ${response.status}`);
         }
     } catch (error) {
-        console.error('Erro:', error);
+        console.error('Erro ao buscar editora:', error);
         mostrarMensagem('Erro ao buscar editora', 'error');
     }
 }
 
-// Função para preencher formulário com dados da editora
+// Função para preencher o formulário com dados da editora
 function preencherFormulario(editora) {
     currentEditoraId = editora.editora_id;
-    searchId.value = editora.editora_id; // Seleciona o ID no combobox
+    searchId.value = editora.editora_id; // Preenche o input com o ID
     nomeEditoraInput.value = editora.nome || '';
     cidadeEditoraInput.value = editora.cidade || '';
     anoFundacaoEditoraInput.value = editora.ano_fundacao || '';
 }
 
-// Função para incluir editora
+// Função para selecionar editora ao clicar na tabela
+async function selecionarEditora(id) {
+    searchId.value = id; // Preenche o input com o ID da tabela
+    await buscarEditora();
+}
+
+// Função para incluir nova editora
 function incluirEditora() {
+    if (currentEditoraId) {
+        mostrarMensagem('Busque uma editora vazia ou cancele para incluir nova.', 'warning');
+        return;
+    }
     mostrarMensagem('Digite os dados para a nova editora!', 'info');
-    limparFormulario(); // Limpa o formulário e deseleciona o combobox
-    bloquearCampos(true); // Bloqueia o combobox de busca, libera os outros
+    limparFormulario();
+    bloquearCampos(false); // Libera campos de dados para preenchimento, bloqueia searchId
+    searchId.disabled = true; // Garante bloqueio do searchId
     mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     nomeEditoraInput.focus();
     operacao = 'incluir';
@@ -137,70 +182,61 @@ function incluirEditora() {
 // Função para alterar editora
 function alterarEditora() {
     if (!currentEditoraId) {
-        mostrarMensagem('Selecione uma editora para alterar.', 'warning');
+        mostrarMensagem('Busque uma editora para alterar.', 'warning');
         return;
     }
     mostrarMensagem('Altere os dados e salve!', 'info');
-    bloquearCampos(true); // Bloqueia o combobox de busca, libera os outros
-    nomeEditoraInput.focus();
+    bloquearCampos(false); // Libera campos de dados para edição, bloqueia searchId
+    searchId.disabled = true; // Garante bloqueio do searchId
     mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
+    nomeEditoraInput.focus();
     operacao = 'alterar';
 }
 
 // Função para excluir editora
 function excluirEditora() {
     if (!currentEditoraId) {
-        mostrarMensagem('Selecione uma editora para excluir.', 'warning');
+        mostrarMensagem('Busque uma editora para excluir.', 'warning');
+        return;
+    }
+    if (!confirm('Confirme a exclusão da editora?')) {
         return;
     }
     mostrarMensagem('Confirme a exclusão clicando em Salvar!', 'warning');
-    bloquearCampos(false); // Bloqueia todos os campos para evitar edição acidental
+    bloquearCampos(true); // Bloqueia campos de dados para evitar edição, bloqueia searchId
+    searchId.disabled = true; // Garante bloqueio do searchId
     mostrarBotoes(false, false, false, false, true, true); // Salvar, Cancelar
     operacao = 'excluir';
 }
 
-// Função para cancelar operação
-function cancelarOperacao() {
-    limparFormulario();
-    mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
-    bloquearCampos(false); // Libera o combobox de busca, bloqueia os outros
-    searchId.focus();
-    operacao = null;
-    mostrarMensagem('Operação cancelada', 'info');
-}
-
-// Função para salvar inclusão, alteração ou exclusão
+// Função para salvar operação (incluir, alterar, excluir)
 async function salvarOperacao() {
-    if (!operacao) {
-        mostrarMensagem('Nenhuma operação selecionada', 'warning');
+    // Validação básica
+    if (!nomeEditoraInput.value.trim()) {
+        mostrarMensagem('O nome da editora é obrigatório!', 'warning');
+        nomeEditoraInput.focus();
         return;
     }
 
-    const editoraData = {
+    const dadosEditora = {
         nome: nomeEditoraInput.value.trim(),
-        cidade: cidadeEditoraInput.value.trim(),
-        ano_fundacao: parseInt(anoFundacaoEditoraInput.value) || null
+        cidade: cidadeEditoraInput.value.trim() || null,
+        ano_fundacao: anoFundacaoEditoraInput.value ? parseInt(anoFundacaoEditoraInput.value) : null
     };
-
-    if ((operacao === 'incluir' || operacao === 'alterar') && (!editoraData.nome || !editoraData.cidade || !editoraData.ano_fundacao)) {
-        mostrarMensagem('Nome, cidade e ano de fundação são obrigatórios', 'warning');
-        return;
-    }
 
     try {
         let response;
-
         if (operacao === 'incluir') {
             response = await fetch(`${API_BASE_URL}/editoras`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editoraData)
+                body: JSON.stringify(dadosEditora)
             });
         } else if (operacao === 'alterar') {
             response = await fetch(`${API_BASE_URL}/editoras/${currentEditoraId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(editoraData)
+                body: JSON.stringify(dadosEditora)
             });
         } else if (operacao === 'excluir') {
             response = await fetch(`${API_BASE_URL}/editoras/${currentEditoraId}`, {
@@ -209,88 +245,41 @@ async function salvarOperacao() {
         }
 
         if (response.ok) {
-            if (operacao === 'excluir') {
-                mostrarMensagem('Editora excluída com sucesso!', 'success');
-            } else {
-                mostrarMensagem(`Editora ${operacao} com sucesso!`, 'success');
-            }
             limparFormulario();
-            carregarEditoras();
-            carregarEditorasNoComboBox(); // Recarrega o combobox após alteração
-            mostrarBotoes(true, false, false, false, false, false); // Apenas Buscar
-            bloquearCampos(false); // Libera o combobox de busca, bloqueia os outros
+            await carregarEditoras(); // Recarrega a tabela
+            mostrarBotoes(true, true, false, false, false, false); // Buscar, Incluir
+            bloquearCampos(true); // Bloqueia campos de dados, libera searchId
+            searchId.disabled = false; // Garante liberação do searchId
             operacao = null;
+            const msg = operacao === 'excluir' ? 'Editora excluída!' : 'Editora salva!';
+            mostrarMensagem(msg, 'success');
         } else {
-            const errorData = await response.json();
-            mostrarMensagem(errorData.error || 'Erro na operação', 'error');
+            throw new Error(`Erro HTTP: ${response.status}`);
         }
     } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro na operação', 'error');
+        console.error('Erro ao salvar operação:', error);
+        mostrarMensagem(`Erro ao ${operacao}: ${error.message}`, 'error');
     }
 }
 
-// Função para carregar lista de editoras na tabela
-async function carregarEditoras() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/editoras`);
-        if (response.ok) {
-            const editoras = await response.json();
-            renderizarTabelaEditoras(editoras);
-        } else {
-            throw new Error('Erro ao carregar editoras');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao carregar lista de editoras', 'error');
+// Função para cancelar operação
+function cancelarOperacao() {
+    limparFormulario();
+    mostrarBotoes(true, true, false, false, false, false); // Buscar, Incluir
+    bloquearCampos(true); // Bloqueia campos de dados, libera searchId
+    searchId.disabled = false; // Garante liberação do searchId
+    searchId.focus();
+    operacao = null;
+    mostrarMensagem('Operação cancelada', 'info');
+}
+
+// Função para validar dados antes de salvar (opcional, pode ser expandida)
+function validarDados() {
+    if (!nomeEditoraInput.value.trim()) {
+        return { valido: false, campo: 'nome_editora', mensagem: 'Nome é obrigatório' };
     }
-}
-
-// Função para renderizar tabela de editoras
-function renderizarTabelaEditoras(editoras) {
-    editorasTableBody.innerHTML = '';
-
-    editoras.forEach(editora => {
-        const row = document.createElement('tr');
-        row.innerHTML = `
-                    <td>
-                        <button class="btn-id" onclick="selecionarEditora(${editora.editora_id})">
-                            ${editora.editora_id}
-                        </button>
-                    </td>
-                    <td>${editora.nome}</td>
-                    <td>${editora.cidade}</td>
-                    <td>${editora.ano_fundacao}</td>
-                `;
-        editorasTableBody.appendChild(row);
-    });
-}
-
-// Função para selecionar editora da tabela (e preencher o combobox)
-async function selecionarEditora(id) {
-    searchId.value = id; // Define o valor selecionado no combobox
-    await buscarEditora();
-}
-
-// NOVA FUNÇÃO: Carregar editoras no combobox de busca
-async function carregarEditorasNoComboBox() {
-    try {
-        const response = await fetch(`${API_BASE_URL}/editoras`);
-        if (response.ok) {
-            const editoras = await response.json();
-            searchId.innerHTML = '<option value="">Selecione um ID</option>'; // Opção padrão
-
-            editoras.forEach(editora => {
-                const option = document.createElement('option');
-                option.value = editora.editora_id;
-                option.textContent = `${editora.editora_id} - ${editora.nome}`;
-                searchId.appendChild(option);
-            });
-        } else {
-            throw new Error('Erro ao carregar editoras para o combobox');
-        }
-    } catch (error) {
-        console.error('Erro:', error);
-        mostrarMensagem('Erro ao carregar IDs de editoras', 'error');
+    if (anoFundacaoEditoraInput.value && (anoFundacaoEditoraInput.value < 1800 || anoFundacaoEditoraInput.value > new Date().getFullYear())) {
+        return { valido: false, campo: 'ano_fundacao_editora', mensagem: 'Ano de fundação inválido' };
     }
+    return { valido: true };
 }

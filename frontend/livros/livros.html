@@ -2,18 +2,19 @@
 <html lang="pt-BR">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>CRUD - Livros</title>
-    <link rel="stylesheet" href="/livros/livros.css" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRUD - Livros e LivroAutor</title>
+    <link rel="stylesheet" href="/livros/livros.css">
 </head>
 
 <body>
     <header>
-        <h1>CRUD Livros</h1>
+        <h1>CRUD Livros e LivroAutor</h1>
     </header>
 
     <main>
+        <!-- CRUD DE LIVROS (EXISTENTE - INALTERADO) -->
         <section class="form-section">
             <h2>Cadastro de Livro</h2>
 
@@ -21,10 +22,12 @@
                 <div class="search-container">
                     <label for="searchId">Buscar por ID:</label>
                     <div class="search-input-group">
-                        <input type="number" id="searchId" placeholder="Digite o ID para buscar" />
+                        <input type="number" id="searchId" placeholder="Digite o ID para buscar">
                         <button type="button" id="btnBuscar">🔍 Buscar</button>
+
                         <button type="button" id="btnIncluir" class="btn-primary">Incluir</button>
-                        <button type="button" id="btnAlterar" class="btn-secondary" style="display: none;">Alterar</button>
+                        <button type="button" id="btnAlterar" class="btn-secondary"
+                            style="display: none;">Alterar</button>
                         <button type="button" id="btnExcluir" class="btn-danger" style="display: none;">Excluir</button>
                         <button type="button" id="btnSalvar" class="btn-save" style="display: none;">Salvar</button>
                         <button type="button" id="btnCancelar" class="btn-cancel">Cancelar</button>
@@ -36,32 +39,35 @@
 
                     <div class="form-group">
                         <label for="titulo">Título:</label>
-                        <input type="text" id="titulo" name="titulo" required />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="isbn">ISBN:</label>
-                        <input type="text" id="isbn" name="isbn" required />
+                        <input type="text" id="titulo" name="titulo" required>
                     </div>
 
                     <div class="form-group">
                         <label for="ano_publicacao">Ano de Publicação:</label>
-                        <input type="number" id="ano_publicacao" name="ano_publicacao" />
+                        <input type="number" id="ano_publicacao" name="ano_publicacao">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editora_id">Editora:</label>
+                        <select id="editora_id" name="editora_id" required>
+                            <option value="">Selecione uma editora</option>
+                            <!-- Opções serão carregadas via JavaScript -->
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="isbn">ISBN:</label>
+                        <input type="text" id="isbn" name="isbn" required>
                     </div>
 
                     <div class="form-group">
                         <label for="paginas">Páginas:</label>
-                        <input type="number" id="paginas" name="paginas" />
-                    </div>
-
-                    <div class="form-group">
-                        <label for="editora_id">ID da Editora:</label>
-                        <input type="number" id="editora_id" name="editora_id" required />
+                        <input type="number" id="paginas" name="paginas">
                     </div>
 
                     <div class="form-group">
                         <label for="imagem_url">URL da Imagem:</label>
-                        <input type="url" id="imagem_url" name="imagem_url" />
+                        <input type="text" id="imagem_url" name="imagem_url">
                     </div>
                 </fieldset>
             </form>
@@ -74,11 +80,11 @@
                         <tr>
                             <th>ID</th>
                             <th>Título</th>
+                            <th>Ano</th>
+                            <th>Editora ID</th>
                             <th>ISBN</th>
-                            <th>Ano Publicação</th>
                             <th>Páginas</th>
-                            <th>ID Editora</th>
-                            <th>Imagem</th>
+                            <th>Imagem URL</th>
                         </tr>
                     </thead>
                     <tbody id="livrosTableBody">
@@ -87,15 +93,81 @@
                 </table>
             </div>
         </section>
+
+        <!-- NOVO: CRUD DE LIVROAUTOR - IDs dos botões alterados para evitar conflitos -->
+        <section class="form-section">
+            <h2>Cadastro de Associação Livro-Autor</h2>
+
+            <form id="livroAutorForm">
+                <div class="search-container">
+                    <label for="searchLivroId">Buscar por Livro:</label>
+                    <select id="searchLivroId" name="searchLivroId">
+                        <option value="">Selecione um Livro</option>
+                    </select>
+
+                    <label for="searchAutorId">Buscar por Autor:</label>
+                    <select id="searchAutorId" name="searchAutorId">
+                        <option value="">Selecione um Autor</option>
+                    </select>
+
+                    <div class="button-group">
+                        <button type="button" id="btnBuscarLivroAutor">🔍 Buscar</button>
+                        <button type="button" id="btnIncluirLivroAutor" class="btn-primary">Incluir</button>
+                        <button type="button" id="btnExcluirLivroAutor" class="btn-danger" style="display: none;">Excluir</button>
+                        <button type="button" id="btnSalvarLivroAutor" class="btn-save" style="display: none;">Salvar</button>
+                        <button type="button" id="btnCancelarLivroAutor" class="btn-cancel">Cancelar</button>
+                    </div>
+                </div>
+
+                <fieldset id="formFields">
+                    <legend>Dados da Associação</legend>
+
+                    <div class="form-group">
+                        <label for="livro_id">Livro:</label>
+                        <select id="livro_id" name="livro_id" required>
+                            <option value="">Selecione um Livro</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="autor_id">Autor:</label>
+                        <select id="autor_id" name="autor_id" required>
+                            <option value="">Selecione um Autor</option>
+                        </select>
+                    </div>
+                </fieldset>
+            </form>
+        </section>
+
+        <section class="list-section">
+            <h2>Lista de Associações Livro-Autor</h2>
+            <div class="table-container">
+                <table id="livroAutorTable">
+                    <thead>
+                        <tr>
+                            <th>ID do Livro</th>
+                            <th>Título do Livro</th>
+                            <th>ID do Autor</th>
+                            <th>Nome do Autor</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="livroAutorTableBody">
+                        <!-- Dados serão carregados dinamicamente -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <footer>
-        <p>&copy; 2025 CRUD Livros</p>
+        <p>&copy; 2025 CRUD Livros e LivroAutor</p>
     </footer>
 
     <div id="messageContainer" class="message-container"></div>
 
     <script src="/livros/livros.js" defer></script>
+
 </body>
 
 </html>

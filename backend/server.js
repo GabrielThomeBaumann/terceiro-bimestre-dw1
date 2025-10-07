@@ -217,3 +217,4 @@ process.on('SIGTERM', async () => {
 
 // Iniciar o servidor
 startServer();
+
