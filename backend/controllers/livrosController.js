@@ -63,7 +63,7 @@ exports.criarLivro = async (req, res) => {
       );
       const livro = result.rows[0];
 
-      // Associa autores se fornecidos (array de IDs)
+      // Associa autores se fornecidos (array de IDs) – isso é usado no frontend para envio de autores_ids
       if (autores_ids && autores_ids.length > 0) {
         for (const autor_id of autores_ids) {
           await client.query(
@@ -94,7 +94,7 @@ exports.criarLivro = async (req, res) => {
   }
 };
 
-// Obter um livro específico por ID (com JOIN para editora e autores)
+// Obter um livro específico por ID (com JOIN para editora e autores) – Inclui autores associados para o frontend
 exports.obterLivro = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -142,7 +142,7 @@ exports.obterLivro = async (req, res) => {
   }
 };
 
-// Atualizar um livro existente (com redefinição de associações de autores)
+// Atualizar um livro existente (com redefinição de associações de autores) – Recebe autores_ids do frontend
 exports.atualizarLivro = async (req, res) => {
   try {
     const id = parseInt(req.params.id);
@@ -185,7 +185,7 @@ exports.atualizarLivro = async (req, res) => {
       );
       const livro = updateResult.rows[0];
 
-      // Remove associações antigas de autores e adiciona novas
+      // Remove associações antigas de autores e adiciona novas (recebe autores_ids do frontend)
       await client.query('DELETE FROM livro_autor WHERE livro_id = $1', [id]);
 
       if (autores_ids && autores_ids.length > 0) {
@@ -253,7 +253,7 @@ exports.deletarLivro = async (req, res) => {
   }
 };
 
-// Listar todos os autores (para o frontend de livros, ex: select múltiplo)
+// Listar todos os autores (para o frontend de livros, ex: select múltiplo ou tabela de disponíveis)
 exports.listarTodosAutores = async (req, res) => {
   try {
     // CORRIGIDO: Seleciona 'nome' em vez de 'nome_autor'
@@ -265,4 +265,23 @@ exports.listarTodosAutores = async (req, res) => {
   }
 };
 
-
+// 1. Controller dedicado para listar autores de um livro
+exports.listarAutoresDoLivro = async (req, res) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (isNaN(id)) {
+      return res.status(400).json({ error: 'ID deve ser um número válido' });
+    }
+    const result = await query(`
+      SELECT a.autor_id, a.nome
+      FROM livro_autor la
+      JOIN autores a ON la.autor_id = a.autor_id
+      WHERE la.livro_id = $1
+      ORDER BY a.nome
+    `, [id]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Erro ao listar autores do livro:', error);
+    res.status(500).json({ error: 'Erro interno do servidor' });
+  }
+};
